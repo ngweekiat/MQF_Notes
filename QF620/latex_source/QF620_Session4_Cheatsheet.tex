@@ -1,0 +1,441 @@
+\documentclass[10pt]{article}
+\newcommand{\sessnum}{4}
+\newcommand{\sesstitle}{Stochastic Integrals and It\^o's Formula}
+\usepackage{qf620style}
+\begin{document}
+\begin{center}
+{\LARGE\bfseries QF620 Stochastic Modelling in Finance --- Session 4\\[2pt] Reference Cheatsheet}\\[6pt]
+{\large Stochastic Integrals and It\^o's Formula: building stochastic models, SDEs, Riemann vs stochastic integrals, previsibility, It\^o isometry, box calculus, It\^o's formula}\\[4pt]
+{\small Built from Session 4 slides (Tee Chyng Wen, SMU) $\cdot$ October 2026 $\cdot$ revised edition with intuition and full slide derivations}
+\end{center}
+\tableofcontents
+\vspace{4pt}
+\textbf{Source:} ``Session 4: Stochastic Integrals and It\^o's Formula'' (Tee Chyng Wen, SMU, 23 slides).
+
+\legend
+
+\textbf{What you must be able to do after this session:} read an SDE as an integral equation; explain why the stochastic integral uses left endpoints; prove $\E[\int f\dd W]=0$ and the It\^o isometry from the definition; compute means and variances of stochastic integrals; use the box-calculus table; derive It\^o's formula from a second-order Taylor expansion; apply both versions of It\^o's formula ($f(X_t)$ and $g(t,X_t)$).
+
+\section*{Notation used throughout (slide conventions)}
+\addcontentsline{toc}{section}{Notation used throughout (slide conventions)}
+{\small\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Symbol & Meaning & Notes\\\midrule
+$W_t$ & Brownian motion & Session 3\\
+$S_t$ & stock price process & [S2]\\
+$\mu,\ \mu(t,S_t),\ \mu_t$ & drift (constant / state-dependent / general) & [S2, S3, S22]\\
+$\sigma,\ \sigma(t,S_t),\ \sigma_t$ & volatility (diffusion coefficient) & [S2, S3, S22]\\
+$\dd t,\ \dd W_t$ & infinitesimal time step; Brownian increment & [S5]\\
+$\Delta t,\ \Delta W_t$ & finite step; $W_{t+\Delta t}-W_t\sim\N(0,\Delta t)$ & [S4]\\
+$P_n$ & partition $0=t_0<t_1<\dots<t_n=T$ & [S6]\\
+$I_T$ & stochastic integral $\int_0^Tf(u,W_u)\dd W_u$ & [S9]\\
+$f',f''$ & derivatives in the state variable & [S19--S22]\\
+$g_t,g_x,g_{xx}$ & partial derivatives of $g(t,x)$ & [S23]\\\bottomrule
+\end{tabularx}}
+
+\section*{0. Topic map}
+\addcontentsline{toc}{section}{0. Topic map}
+\begin{lstlisting}
+PREREQUISITES: S3 Brownian motion (independent N(0,Δt) increments, nowhere differentiable)
+    ▼
+SESSION 4
+├─ MODELS [S2–S5]
+│     ├─ S_t = S₀ + μt + σW_t ~ N(S₀+μt, σ²t)                                   [S2]
+│     ├─ integral form ⇔ differential form dS = μ dt + σ dW                      [S3]
+│     └─ deterministic + stochastic parts ; dS/dt does not exist                 [S4–S5]
+├─ STOCHASTIC INTEGRAL [S6–S12]
+│     ├─ Riemann: Σ f(x_i)Δt_i, any x_i                                          [S6–S7]
+│     ├─ Itô: Σ f(t_{i−1})ΔW_i, LEFT endpoint (previsibility)                    [S8]
+│     ├─ E[∫f dW] = 0 ; E[(∫f dW)²] = E[∫f² dt] (isometry) ; proofs              [S9–S11]
+│     └─ example ∫W dW: mean 0, variance T²/2                                    [S12]
+├─ BOX CALCULUS [S13–S14]
+│     └─ law of large numbers ⇒ (ΔW)² ≈ Δt ; dt² = 0, dt dW = 0, dW² = dt        [S13–S14]
+└─ ITÔ'S FORMULA [S15–S23]
+      ├─ history; why we need it                                                [S15–S18]
+      ├─ ordinary Taylor dx = f′dt ; stochastic dX = f′dW + ½f″dt               [S19–S20]
+      ├─ dX = (μf′ + ½σ²f″)dt + σf′dW                                            [S21–S22]
+      └─ with time: dY = (g_t + μg_x + ½σ²g_xx)dt + σg_x dW                      [S23]
+    ▼
+LATER: S5 solving SDEs (GBM via d ln S) ; S6 Black–Scholes PDE ; S7 Girsanov
+\end{lstlisting}
+\textbf{The storyline of the session.}
+\begin{itemize}
+\item We want a stock model with controllable drift and volatility: $\dd S=\mu\dd t+\sigma\dd W$. Since Brownian paths have no derivative, this is shorthand for an \textbf{integral} equation, and the $\int\sigma\dd W$ part needs a new kind of integral.
+\item The \textbf{stochastic integral} is a Riemann-like sum but evaluated at the \emph{left} endpoint (you choose your position before the price moves). Independent, mean-zero increments then give its two key properties: mean zero and the It\^o isometry.
+\item $(\Delta W)^2$ behaves like $\Delta t$, not like $(\Delta t)^2$, so in a Taylor expansion the second-order term survives. That extra $\frac12f''\dd t$ is \textbf{It\^o's formula}, the source of every $-\frac12\sigma^2$ in the course.
+\end{itemize}
+
+\section{Concept entries}
+
+\subsection{Building stochastic models [S2]}
+\begin{idea}
+Plain $W_t$ is a poor stock model: it has no trend and its randomness scale is fixed at 1. Add a deterministic trend $\mu t$ (drift) and scale the noise by $\sigma$ (volatility). The result is still normal: a shifted, stretched Brownian motion.
+\end{idea}
+\[S_t=S_0+\mu t+\sigma W_t,\quad\mu,\sigma\in\R;\qquad S_t\sim\N(S_0+\mu t,\ \sigma^2t),\quad \E[S_t]=S_0+\mu t,\quad V[S_t]=V[\sigma W_t]=\sigma^2t.\]
+\begin{where}
+\w{$\mu t$}{drift: deterministic trend, $\mu$ per unit time.}
+\w{$\sigma W_t$}{random part: Brownian motion scaled by the volatility.}
+\w{$\E[S_t]$}{$\E[W_t]=0$, so only the deterministic part survives.}
+\w{$V[S_t]$}{constants add no variance; $V[\sigma W_t]=\sigma^2V[W_t]=\sigma^2t$.}
+\end{where}
+\beyond{} Weakness: normally distributed, so $S_t$ can go negative: $\Prob(S_t<0)=\Phi\big(-\frac{S_0+\mu t}{\sigma\sqrt t}\big)>0$ (Bachelier model).
+
+\subsection{Integral and differential forms; SDEs [S3]}
+\begin{idea}
+``$\dd S_t=\mu\dd t+\sigma\dd W_t$'' is a short way of writing ``the total change of $S$ from $0$ to $t$ is the accumulated drift plus the accumulated random shocks''. In real models the drift and volatility can depend on the current price and time, e.g.\ GBM has $\mu(t,S)=\mu S$, $\sigma(t,S)=\sigma S$.
+\end{idea}
+\[S_t=S_0+\int_0^t\sigma\dd W_u+\int_0^t\mu\dd u\quad\iff\quad \dd S_t=\mu\dd t+\sigma\dd W_t;\qquad\text{in general }\ \dd S_t=\mu(t,S_t)\dd t+\sigma(t,S_t)\dd W_t.\]
+\begin{where}
+\w{$\int_0^t\mu\dd u$}{accumulated drift (ordinary integral) $=\mu t$.}
+\w{$\int_0^t\sigma\dd W_u$}{accumulated random shocks (stochastic integral) $=\sigma W_t$ for constant $\sigma$.}
+\w{$\mu(t,S_t),\ \sigma(t,S_t)$}{drift and volatility coefficients: functions of time and the current price only.}
+\end{where}
+With constant $\mu,\sigma$ the SDE is solved by $S_t=S_0+\mu t+\sigma W_t$.
+\begin{exam}
+\flag{} [S3] says ``a stochastic process is a continuous process that can be written'' in this form. That describes an \emph{It\^o process} (diffusion); many processes (e.g.\ with jumps) are not of this form.
+\end{exam}
+
+\subsection{Deterministic and stochastic components [S4--S5]}
+\begin{idea}
+Over a small step, the future price is ``present $+$ drift $\times$ time $+$ volatility $\times$ Brownian increment''. The drift uses the price at the \emph{start} of the step, which is already known: that is why it counts as deterministic over the step. Only the increment is unknown, and it is independent of everything so far. We cannot divide by $\dd t$ to get an ODE, because $\dd W/\dd t$ does not exist.
+\end{idea}
+\[\underbrace{S_{t+\Delta t}}_{\text{future}}=\underbrace{S_t}_{\text{present}}+\underbrace{\mu(t,S_t)\Delta t}_{\text{deterministic}}+\underbrace{\sigma(t,S_t)(W_{t+\Delta t}-W_t)}_{\text{stochastic}}\ \xrightarrow{\Delta t\to0^+}\ \dd S_t=\mu(t,S_t)\dd t+\sigma(t,S_t)\dd W_t.\]
+\begin{where}
+\w{$W_{t+\Delta t}-W_t$}{Brownian increment $\sim\N(0,\Delta t)$, independent of everything up to $t$.}
+\w{$\frac{\dd W_t}{\dd t}$}{does not exist: $W$ is nowhere differentiable, so the SDE must be read as an integral equation [S5].}
+\end{where}
+\textbf{Slide question [S4]} (answered here): $\mu(t,S_t)$ is evaluated at the start of the step, where $S_t$ is known. Given information at $t$, the drift over $[t,t+\Delta t]$ is a known number; only the Brownian increment is random.
+
+\subsection{Integral form and the Riemann integral [S6--S7]}
+\begin{idea}
+The integral form has two pieces. The $\dd u$ integral is the familiar area under a curve (Riemann sum of rectangles); for a nice function it does not matter where in each sub-interval you evaluate the height. The $\dd W$ integral looks similar but the ``widths'' are random Brownian increments, and there the evaluation point \emph{does} matter.
+\end{idea}
+\[S_T=S_0+\underbrace{\int_0^T\mu(u,S_u)\dd u}_{\text{Riemann integral}}+\underbrace{\int_0^T\sigma(u,S_u)\dd W_u}_{\text{stochastic integral}};\qquad \int_0^Tf\dd t=\lim_{n\to\infty}\sum_{i=1}^nf(x_i)(t_i-t_{i-1}),\ x_i\in[t_{i-1},t_i].\]
+\begin{where}
+\w{$t_i-t_{i-1}$}{width of the $i$-th sub-interval of the partition $P_n$.}
+\w{$x_i$}{any point inside it (left, right, middle: same limit for a regular $f$).}
+\w{$f(x_i)(t_i-t_{i-1})$}{area of the $i$-th rectangle [S7].}
+\end{where}
+
+\subsection{The stochastic integral and previsibility [S8]}
+\begin{idea}
+Replace the width $t_i-t_{i-1}$ by the Brownian increment $W_{t_i}-W_{t_{i-1}}$ and evaluate the integrand at the \textbf{left endpoint}. Financially: $f$ is your position, $\Delta W$ is the price move; you must choose your position \emph{before} the move happens (previsibility), so the integral is your trading P\&L. Because $W$ is so rough, other evaluation points give a different limit (e.g.\ midpoint gives the Stratonovich integral), so the choice is part of the definition. The result is a random variable, not a number.
+\end{idea}
+\[\int_0^Tf(t)\dd W_t=\lim_{n\to\infty}\sum_{i=1}^nf(t_{i-1})\times\big(W_{t_i}-W_{t_{i-1}}\big).\]
+\begin{where}
+\w{$f(t_{i-1})$}{integrand at the left endpoint of each interval.}
+\w{$W_{t_i}-W_{t_{i-1}}$}{Brownian increment, playing the role of the width.}
+\w{$\lim$}{exists ``in an appropriate sense'' (mean square, $L^2$ \beyond), not path by path.}
+\end{where}
+\begin{worked}[{Why the evaluation point matters \beyond}]
+For $f=W$: left-point sum $\sum W_{t_{i-1}}\Delta W_i$ has mean $0$. Right-point sum $\sum W_{t_i}\Delta W_i=\sum W_{t_{i-1}}\Delta W_i+\sum(\Delta W_i)^2$ has mean $0+\sum\Delta t_i=T$. The difference $\sum(\Delta W_i)^2\to T$ does not vanish, unlike in ordinary calculus where $\sum(\Delta t_i)^2\to0$.
+\end{worked}
+
+\subsection{Properties of stochastic integrals [S9]}
+\begin{idea}
+Each term of the sum is ``something known'' $\times$ ``a fresh mean-zero increment''. So the integral has mean zero (a fair game: you cannot make money on average trading a martingale). For the second moment, cross terms between different increments vanish and each diagonal term contributes $f^2\times\Delta t$, because $\E[(\Delta W)^2]=\Delta t$. Hence ``$\dd W$ squared becomes $\dd t$'' inside expectations: the \textbf{It\^o isometry}. It is the workhorse for variances of stochastic integrals.
+\end{idea}
+For $I_T=\int_0^Tf(u,W_u)\dd W_u$:
+\begin{align*}
+&(1)\quad \E[I_T]=0\\
+&(2)\quad \E[I_T^2]=\E\Big[\Big(\int_0^Tf(u,W_u)\dd W_u\Big)^2\Big]=\E\Big[\int_0^Tf(u,W_u)^2\dd u\Big]\\
+&(3)\quad f\text{ deterministic}\ \Rightarrow\ I_T\sim\N\Big(0,\int_0^Tf(u)^2\dd u\Big)\\
+&(4)\quad \E\Big[\int_0^Tf(u)\dd W_u\times\int_0^Tg(s)\dd W_s\Big]=\E\Big[\int_0^Tf(u)g(u)\dd u\Big]\\
+&(5)\quad \text{It\^o isometry: }\E\Big[\Big(\int_0^TX_t\dd W_t\Big)^2\Big]=\E\Big[\int_0^TX_t^2\dd t\Big]
+\end{align*}
+\begin{where}
+\w{$f(u,W_u),X_t$}{integrand; may depend on time and the path so far (adapted / previsible).}
+\w{$\E[I_T^2]$}{since the mean is 0, this is the variance of $I_T$.}
+\w{(3)}{deterministic integrand: a sum of independent normals, hence normal.}
+\w{(4)}{covariance of two integrals against the same $W$; $g=f$ recovers (2).}
+\end{where}
+\begin{exam}
+\flag{} [S9] Property (3) needs a deterministic $f$ (with a random integrand $I_T$ is usually not normal, e.g.\ $\int W\dd W$). (2) and (5) are the same statement. Typical use: $\int_0^Tt\dd W_t\sim\N(0,\int_0^Tt^2\dd t)=\N(0,T^3/3)$.
+\end{exam}
+
+\subsection{Proofs of the mean and the isometry [S10--S11]}
+\begin{deriv}[{Proof of (1): $\E[\int f\dd W]=0$ {[S10]}}]
+\vspace{-6pt}
+\begin{align*}
+\E\Big[\int_0^Tf(t,W_t)\dd W_t\Big]&=\E\Big[\lim_{n\to\infty}\sum_{i=1}^nf(t_{i-1},W_{t_{i-1}})(W_{t_i}-W_{t_{i-1}})\Big] && \why{definition}\\
+&=\lim_{n\to\infty}\sum_{i=1}^n\E\big[f(t_{i-1},W_{t_{i-1}})(W_{t_i}-W_{t_{i-1}})\big] && \why{swap $\E$, $\lim$, $\sum$}\\
+&=\lim_{n\to\infty}\sum_{i=1}^n\E\big[f(t_{i-1},W_{t_{i-1}})\big]\,\E\big[W_{t_i}-W_{t_{i-1}}\big] && \why{increment indep.\ of $W_{t_{i-1}}$}\\
+&=\lim_{n\to\infty}\sum_{i=1}^n\E\big[f(t_{i-1},W_{t_{i-1}})\big]\times0=0 && \why{mean-zero increments}
+\end{align*}
+This is exactly where the left endpoint is used: $f(t_{i-1},\cdot)$ depends only on the path up to $t_{i-1}$.
+\end{deriv}
+\begin{deriv}[{Proof of (2), the isometry {[S11]}}]
+Write $\Delta W_{i}=W_{t_i}-W_{t_{i-1}}$ and $f_{i}=f(t_{i-1},W_{t_{i-1}})$. Key lemma:
+\[\E[f_if_j\,\Delta W_i\,\Delta W_j]=\begin{cases}\E[f_i^2]\,(t_i-t_{i-1}) & i=j\\ 0 & i\ne j\end{cases}\]
+\emph{Case $i\ne j$}, say $i>j$: $\Delta W_i$ is independent of $f_i,f_j,\Delta W_j$ (all known by $t_{i-1}$), so the expectation factorises with $\E[\Delta W_i]=0$. \emph{Case $i=j$}: $\Delta W_i$ independent of $f_i$, and $\E[(\Delta W_i)^2]=t_i-t_{i-1}$. Then
+\vspace{-4pt}
+\begin{align*}
+\E\Big[\Big(\int_0^Tf\dd W\Big)^2\Big]&=\E\Big[\int_0^Tf(s,W_s)\dd W_s\times\int_0^Tf(u,W_u)\dd W_u\Big] && \why{square $=$ product}\\
+&=\lim_{n\to\infty}\sum_{i=1}^n\sum_{j=1}^n\E[f_if_j\,\Delta W_i\Delta W_j] && \why{multiply out the sums}\\
+&=\lim_{n\to\infty}\sum_{i=1}^n\E[f_i^2]\,(t_i-t_{i-1}) && \why{only diagonal survives}\\
+&=\E\Big[\int_0^Tf(t,W_t)^2\dd t\Big] && \why{a Riemann sum}
+\end{align*}
+\end{deriv}
+\begin{exam}
+\flag{} [S10--S11] swap $\E$ and $\lim$ without comment; this is justified by mean-square convergence of the sums \beyond. In the exam, reproduce the two cases ($i=j$, $i\neq j$) with the independence reason.
+\end{exam}
+
+\subsection{Example: $\int_0^TW_t\dd W_t$ [S12]}
+\begin{deriv}[{Mean and variance (worked here; the slide only poses it)}]
+\vspace{-6pt}
+\begin{align*}
+\E[I_T]&=0 && \why{property (1)}\\
+V[I_T]=\E[I_T^2]&=\E\Big[\int_0^TW_t^2\dd t\Big] && \why{isometry with $f=W_t$}\\
+&=\int_0^T\E[W_t^2]\dd t=\int_0^Tt\dd t=\frac{T^2}{2} && \why{swap $\E$ and $\int\dd t$; $\E[W_t^2]=t$}
+\end{align*}
+\end{deriv}
+\beyond{} Closed form via It\^o on $W_t^2$ (1.12): $\int_0^TW\dd W=\frac12W_T^2-\frac12T$. Check: mean $\frac12T-\frac12T=0$; variance $\frac14V[W_T^2]=\frac14\cdot2T^2=\frac{T^2}2$ \checkmark. Ordinary calculus would wrongly give $\frac12W_T^2$ (mean $T/2\ne0$).
+
+\subsection{Box calculus [S13--S14]}
+\begin{idea}
+Over a step of length $\Delta t$, $(\Delta W)^2$ is random but its mean is exactly $\Delta t$; summed over many steps, the fluctuations average out (law of large numbers) and $\sum(\Delta W)^2\to T$ \emph{deterministically}. So in the limit, $(\dd W)^2$ can be replaced by $\dd t$. Anything of higher order than $\dd t$ ($\dd t^2$, $\dd t\,\dd W\sim\dd t^{3/2}$) is negligible. This multiplication table is all you need to compute $(\dd X)^2$ in It\^o's formula.
+\end{idea}
+\textbf{Strong law of large numbers [S13]:}\quad $\Prob\Big(\lim_{n\to\infty}\frac{X_1+\cdots+X_n}{n}=\mu\Big)=1$;\quad e.g.\ $X_i=\pm1$ equally likely $\Rightarrow\frac{X_1+\cdots+X_n}{n}\to0$.
+\begin{deriv}[{Why $(\Delta W)^2\approx\Delta t$ \beyond{} (the slide's argument made explicit)}]
+\vspace{-6pt}
+\begin{align*}
+\Delta W_i&=\sqrt{\Delta t}\,Z_i,\ Z_i\text{ i.i.d. }\N(0,1),\quad \Delta t=T/n && \why{BM increments}\\
+\textstyle\sum_{i=1}^n(\Delta W_i)^2&=\Delta t\sum Z_i^2=T\cdot\frac1n\textstyle\sum_{i=1}^nZ_i^2\ \to\ T\cdot\E[Z^2]=T && \why{strong law}\\
+\E[(\Delta W)^2]&=\Delta t,\qquad V[(\Delta W)^2]=\Delta t^2\,V[Z^2]=2\Delta t^2 && \why{fluctuation is $O(\Delta t^2)$}
+\end{align*}
+So $(\Delta W)^2$ is of order $\Delta t$ (its randomness is an order smaller and washes out), and $\Delta W$ is of order $\sqrt{\Delta t}$. The limit $\sum(\Delta W)^2\to T$ is the \emph{quadratic variation} of $W$.
+\end{deriv}
+\textbf{Rules [S14]:}\quad $(\dd t)^2=0,\qquad \dd t\cdot\dd W_t=0,\qquad (\dd W_t)^2=\dd t.$
+\begin{center}\small\begin{tabular}{c|cc}$\cdot$ & $\dd t$ & $\dd W_t$\\\hline $\dd t$ & 0 & 0\\ $\dd W_t$ & 0 & $\dd t$\end{tabular}\end{center}
+\begin{deriv}[{Example {[S14]}: $(\dd X)^2$}]
+$\dd X_t=\mu\dd t+\sigma\dd W_t\ \Rightarrow\ (\dd X_t)^2=\mu^2(\dd t)^2+2\mu\sigma\dd t\dd W_t+\sigma^2(\dd W_t)^2=0+0+\sigma^2\dd t$. Only the volatility matters. \beyond: for GBM $(\dd S)^2=\sigma^2S^2\dd t$; for correlated BMs $\dd W^1\dd W^2=\rho\dd t$.
+\end{deriv}
+
+\subsection{History and motivation [S15--S18]}
+\begin{itemize}
+\item Brown (1827) pollen; Einstein, Perrin (early 1900s); Wiener (1923) probability measures on path space; Kiyosi It\^o (1942) built the stochastic integral and SDEs from scratch [S15--S16].
+\item \textbf{Why It\^o's formula [S17]:} theoretically, to manipulate stochastic integrals with chain/product rules instead of going back to the definition; practically, an option price is a \emph{function} of the stock price process, so we need the dynamics of a function of a stochastic process.
+\item Quotations [S18]: Hamming (``computing is insight, not numbers''), F\"ollmer (It\^o calculus transformed quantitative finance).
+\end{itemize}
+
+\subsection{Deriving It\^o's formula [S19--S21]}
+\begin{idea}
+The chain rule comes from a Taylor expansion: keep the first-order term, drop the rest because $(\Delta t)^2$ is negligible. Do the same with a Brownian argument and the second-order term $(\Delta W)^2$ is \emph{not} negligible: it is $\dd t$ by box calculus. So the stochastic chain rule has one extra term, $\frac12f''\dd t$. Intuition: for convex $f$, random wiggles push $f(W)$ up on average (Jensen), and that average push is the drift $\frac12f''$.
+\end{idea}
+\begin{deriv}[{Ordinary calculus {[S19]}}]
+\vspace{-6pt}
+\begin{align*}
+f(t+\Delta t)&=f(t)+f'(t)\Delta t+\tfrac1{2!}f''(t)(\Delta t)^2+\tfrac1{3!}f'''(t)(\Delta t)^3+\cdots && \why{Taylor}\\
+\Delta x&=f'(t)\Delta t+\tfrac1{2!}f''(t)(\Delta t)^2+\cdots && \why{$x=f(t)$}\\
+\frac{\dd x}{\dd t}&=f'(t) && \why{divide by $\Delta t$, $\Delta t\to0^+$}
+\end{align*}
+\end{deriv}
+\begin{deriv}[{Function of Brownian motion {[S20]}}]
+\vspace{-6pt}
+\begin{align*}
+f(W_t+\Delta W_t)&=f(W_t)+f'(W_t)\Delta W_t+\tfrac1{2!}f''(W_t)(\Delta W_t)^2+\cdots && \why{Taylor in $W$}\\
+\Delta X_t&=f'(W_t)\Delta W_t+\tfrac12f''(W_t)(\Delta W_t)^2+\cdots && \why{$X_t=f(W_t)$}\\
+\dd X_t&=f'(W_t)\dd W_t+\underbrace{\tfrac12f''(W_t)\dd t}_{\text{extra term}} && \why{$(\dd W)^2=\dd t$, $(\dd W)^3=0$}
+\end{align*}
+\end{deriv}
+\begin{deriv}[{Function of a stock {[S21]}: $\Delta S_t=\mu\Delta t+\sigma\Delta W_t$, $X_t=f(S_t)$}]
+\vspace{-6pt}
+\begin{align*}
+\Delta X_t&=f'(S_t)\Delta S_t+\tfrac1{2!}f''(S_t)(\Delta S_t)^2+\cdots && \why{Taylor in $S$}\\
+(\Delta S_t)^2&=\mu^2(\Delta t)^2+2\mu\sigma(\Delta t)(\Delta W_t)+\sigma^2(\Delta W_t)^2\ \to\ \sigma^2\dd t && \why{box calculus}\\
+\dd X_t&=f'(S_t)\dd S_t+\tfrac12f''(S_t)\sigma^2\dd t && \why{substitute}\\
+&=f'(S_t)(\mu\dd t+\sigma\dd W_t)+\tfrac12\sigma^2f''(S_t)\dd t\\
+&=\Big(\mu f'(S_t)+\frac{\sigma^2}{2}f''(S_t)\Big)\dd t+\sigma f'(S_t)\dd W_t && \why{collect $\dd t$ and $\dd W$}
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$f'\dd S$}{first-order (ordinary chain rule) term.}
+\w{$\frac12f''\sigma^2\dd t$}{second-order It\^o term from $(\dd S)^2=\sigma^2\dd t$.}
+\w{$\mu f'+\frac12\sigma^2f''$}{drift of $X$: chain-rule drift plus convexity correction.}
+\w{$\sigma f'$}{volatility of $X$: stock's volatility times the sensitivity $f'$ (a ``delta'').}
+\end{where}
+
+\subsection{It\^o's formula (function of a stochastic process) [S22]}
+\textbf{Statement.} If $\dd X_t=\mu_t\dd t+\sigma_t\dd W_t$ and $f:\R\to\R$ with $f,f',f''$ continuous, then $Y_t=f(X_t)$ satisfies
+\[\dd Y_t=\Big(\mu_tf'(X_t)+\tfrac12\sigma_t^2f''(X_t)\Big)\dd t+\sigma_tf'(X_t)\dd W_t.\]
+\begin{where}
+\w{$\mu_t,\sigma_t$}{drift and volatility of $X$ (may be random, but known at $t$).}
+\w{$\frac12\sigma_t^2f''$}{It\^o correction from $(\dd X)^2=\sigma_t^2\dd t$.}
+\end{where}
+\textbf{Recipe:} (i) write $f,f',f''$; (ii) $\dd Y=f'\dd X+\frac12f''(\dd X)^2$; (iii) substitute $\dd X$ and $(\dd X)^2=\sigma^2\dd t$; (iv) collect $\dd t$ and $\dd W$ terms.
+\begin{deriv}[{Slide example {[S22]} (worked here): $\dd X_t=\mu\dd t+\sigma\dd W_t$, $Y_t=X_t^2$}]
+$f(x)=x^2$, $f'=2x$, $f''=2$:
+\[\dd Y_t=2X_t\dd X_t+\tfrac12\cdot2\,(\dd X_t)^2=2X_t(\mu\dd t+\sigma\dd W_t)+\sigma^2\dd t=(2\mu X_t+\sigma^2)\dd t+2\sigma X_t\dd W_t.\]
+\beyond{} With $\mu=0$, $\sigma=1$ ($X=W$): $\dd(W_t^2)=\dd t+2W_t\dd W_t$. Integrate: $W_T^2=T+2\int_0^TW\dd W$, so $\int_0^TW\dd W=\frac12W_T^2-\frac12T$, and $W_t^2-t=2\int_0^tW\dd W$ is a martingale (Session 3).
+\end{deriv}
+
+\subsection{It\^o's formula with time [S23]}
+\begin{idea}
+Option prices depend on time as well as the stock: $V(t,S)$. Expand in both variables. The time direction behaves like ordinary calculus (only $g_t\dd t$ survives); the state direction gets the It\^o correction. All mixed and higher terms ($g_{tt}\dd t^2$, $g_{tx}\dd t\dd X$) vanish by the box table. This version gives the Black--Scholes PDE in Session 6.
+\end{idea}
+\textbf{Statement.} If $\dd X_t=\mu_t\dd t+\sigma_t\dd W_t$ and $g(t,x)$ with $g_t,g_x,g_{xx}$ continuous, then $Y_t=g(t,X_t)$ satisfies
+\[\dd Y_t=\Big(g_t(t,X_t)+\mu_tg_x(t,X_t)+\tfrac12\sigma_t^2g_{xx}(t,X_t)\Big)\dd t+\sigma_tg_x(t,X_t)\dd W_t.\]
+\begin{deriv}[{Where it comes from \beyond{} (two-variable Taylor $+$ box calculus)}]
+\vspace{-6pt}
+\begin{align*}
+\dd Y&=g_t\dd t+g_x\dd X+\tfrac12g_{tt}(\dd t)^2+g_{tx}\dd t\dd X+\tfrac12g_{xx}(\dd X)^2+\cdots && \why{Taylor in $(t,x)$}\\
+&=g_t\dd t+g_x(\mu_t\dd t+\sigma_t\dd W)+0+0+\tfrac12g_{xx}\sigma_t^2\dd t && \why{$(\dd t)^2=\dd t\dd X=0$}\\
+&=\big(g_t+\mu_tg_x+\tfrac12\sigma_t^2g_{xx}\big)\dd t+\sigma_tg_x\dd W && \why{collect}
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$g_t$}{sensitivity to the passage of time (``theta'').}
+\w{$g_x$}{sensitivity to the state (``delta'').}
+\w{$g_{xx}$}{curvature in the state (``gamma''); produces the It\^o term.}
+\end{where}
+\begin{deriv}[{Slide example {[S23]} (worked here): $Y_t=e^{X_t+t}$}]
+$g=e^{x+t}$, so $g_t=g_x=g_{xx}=e^{x+t}=Y$:
+\[\dd Y_t=\Big(1+\mu+\tfrac12\sigma^2\Big)Y_t\dd t+\sigma Y_t\dd W_t.\]
+The $1$ comes from $g_t$ (explicit $+t$), $\mu$ from $\mu g_x$, $\frac12\sigma^2$ from the It\^o term. Volatility $\propto Y$: $Y$ is a geometric Brownian motion.
+\end{deriv}
+\begin{deriv}[{GBM via It\^o \beyond{} (preview of Session 5)}]
+$\dd S_t=\mu S_t\dd t+\sigma S_t\dd W_t$, $f=\ln S$, $f'=1/S$, $f''=-1/S^2$:
+\vspace{-4pt}
+\begin{align*}
+\dd(\ln S_t)&=\frac1{S_t}\dd S_t-\frac12\frac1{S_t^2}(\dd S_t)^2=(\mu\dd t+\sigma\dd W_t)-\tfrac12\sigma^2\dd t\\
+&=\Big(\mu-\tfrac12\sigma^2\Big)\dd t+\sigma\dd W_t\ \Rightarrow\ S_t=S_0\exp\Big[\Big(\mu-\tfrac12\sigma^2\Big)t+\sigma W_t\Big].
+\end{align*}
+This is the $r-\frac12\sigma^2$ of Session 2 when $\mu=r$.
+\end{deriv}
+
+\subsection{Implementation \beyond{} (tested)}
+\begin{lstlisting}[language=Python]
+import numpy as np
+rng = np.random.default_rng(1)
+paths, steps, T = 200_000, 500, 2.0
+dt = T / steps
+dW = np.sqrt(dt) * rng.standard_normal((paths, steps))
+W = np.cumsum(dW, axis=1)
+W_left = np.hstack([np.zeros((paths, 1)), W[:, :-1]])   # left end point (Ito)
+I = np.sum(W_left * dW, axis=1)                          # sum W_{t_{i-1}} dW_i
+print(round(I.mean(), 3), round(I.var(), 3), T**2/2)     # -0.0 2.004 2.0
+print(round(np.mean(np.abs(I - (0.5*W[:, -1]**2 - 0.5*T))), 3))  # 0.05, shrinks as steps grow
+QV = np.sum(dW**2, axis=1)
+print(round(QV.mean(), 3), round(QV.std(), 3))           # 2.0 0.127: sum of dW^2 ~ T
+\end{lstlisting}
+
+\section{Comparison tables}
+\subsection{Riemann vs stochastic integral}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Riemann $\int f(t)\dd t$ [S6--S7] & Stochastic $\int f\dd W_t$ [S8]\\\midrule
+Sum & $\sum f(x_i)(t_i-t_{i-1})$ & $\sum f(t_{i-1})(W_{t_i}-W_{t_{i-1}})$\\
+Evaluation point & any $x_i\in[t_{i-1},t_i]$ & left endpoint only (previsible)\\
+Result & a number & a random variable\\
+Limit & ordinary & mean square \beyond\\
+Mean / second moment & --- & $0$ / $\E\int f^2\dd t$ (isometry)\\\bottomrule
+\end{tabularx}}
+\subsection{Ordinary vs It\^o calculus}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Ordinary [S19] & It\^o [S20--S23]\\\midrule
+Second-order term & $(\Delta t)^2\to0$ & $(\Delta W)^2\to\dd t$ survives\\
+Chain rule & $\dd f(x)=f'\dd x$ & $\dd f(X)=f'\dd X+\frac12f''(\dd X)^2$\\
+$\dd(W^2)$ & $2W\dd W$ & $2W\dd W+\dd t$\\
+$\int_0^TW\dd W$ & $\frac12W_T^2$ & $\frac12W_T^2-\frac12T$\\
+$\dd\ln S$ for GBM & $\mu\dd t+\sigma\dd W$ & $(\mu-\frac12\sigma^2)\dd t+\sigma\dd W$\\\bottomrule
+\end{tabularx}}
+\subsection{It\^o's formula: the two versions}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & $Y=f(X_t)$ [S22] & $Y=g(t,X_t)$ [S23]\\\midrule
+Drift & $\mu_tf'+\frac12\sigma_t^2f''$ & $g_t+\mu_tg_x+\frac12\sigma_t^2g_{xx}$\\
+Volatility & $\sigma_tf'$ & $\sigma_tg_x$\\
+Slide example & $X^2$: $(2\mu X+\sigma^2)\dd t+2\sigma X\dd W$ & $e^{X+t}$: $(1+\mu+\frac12\sigma^2)Y\dd t+\sigma Y\dd W$\\\bottomrule
+\end{tabularx}}
+
+\section{Master formula sheet}
+\textbf{Models and SDEs [S2--S5]}
+\begin{itemize}
+\item $S_t=S_0+\mu t+\sigma W_t\sim\N(S_0+\mu t,\sigma^2t)$.
+\item $\dd S_t=\mu(t,S_t)\dd t+\sigma(t,S_t)\dd W_t\iff S_T=S_0+\int_0^T\mu\dd u+\int_0^T\sigma\dd W_u$.
+\end{itemize}
+\textbf{Stochastic integral [S8--S12]}
+\begin{itemize}
+\item $\int_0^Tf\dd W=\lim\sum f(t_{i-1})(W_{t_i}-W_{t_{i-1}})$ (left endpoint).
+\item $\E[\int f\dd W]=0$; $\E[(\int f\dd W)^2]=\E[\int f^2\dd t]$; $f$ deterministic $\Rightarrow\N(0,\int f^2\dd t)$.
+\item $\int_0^TW\dd W=\frac12W_T^2-\frac12T$: mean 0, variance $T^2/2$.
+\end{itemize}
+\textbf{Box calculus [S13--S14]:} $(\dd t)^2=0$, $\dd t\dd W=0$, $(\dd W)^2=\dd t$; $(\dd X)^2=\sigma^2\dd t$.
+
+\textbf{It\^o's formula [S20--S23]}
+\begin{itemize}
+\item $\dd f(W_t)=f'(W_t)\dd W_t+\frac12f''(W_t)\dd t$.
+\item $\dd f(X_t)=(\mu_tf'+\frac12\sigma_t^2f'')\dd t+\sigma_tf'\dd W_t$.
+\item $\dd g(t,X_t)=(g_t+\mu_tg_x+\frac12\sigma_t^2g_{xx})\dd t+\sigma_tg_x\dd W_t$.
+\item GBM: $\dd S=\mu S\dd t+\sigma S\dd W\Rightarrow S_t=S_0e^{(\mu-\frac12\sigma^2)t+\sigma W_t}$ \beyond.
+\end{itemize}
+
+\section{Glossary}
+\begin{itemize}
+\item \textbf{Box calculus:} multiplication table for $\dd t$ and $\dd W$ [S14].
+\item \textbf{Drift / diffusion coefficient:} $\mu(t,S_t)$ scales $\dd t$; $\sigma(t,S_t)$ scales $\dd W$ [S3].
+\item \textbf{It\^o process:} $\dd X=\mu_t\dd t+\sigma_t\dd W$ [S22]. \quad \textbf{It\^o isometry:} $\E[(\int X\dd W)^2]=\E[\int X^2\dd t]$ [S9].
+\item \textbf{It\^o's formula / lemma:} chain rule for stochastic processes [S22--S23].
+\item \textbf{Previsibility:} integrand known at the start of each interval [S8].
+\item \textbf{Quadratic variation:} $\sum(\Delta W)^2\to T$ \beyond. \quad \textbf{SDE:} stochastic differential equation [S5].
+\item \textbf{Stochastic integral:} limit of left-endpoint sums against $\Delta W$ [S8].
+\item \textbf{Strong law of large numbers:} sample averages converge to the mean with probability 1 [S13].
+\end{itemize}
+
+\section{Self-test}
+\subsection*{Questions}
+\addcontentsline{toc}{subsection}{Questions}
+\begin{enumerate}[label=Q\arabic*.]
+\item ([S2]) For $S_t=S_0+\mu t+\sigma W_t$ give the distribution of $S_t$ and $\Prob(S_t<0)$.
+\item ([S4--S5]) Why is the drift term ``deterministic'' over a step, and why can't we write $\dd S/\dd t$?
+\item ([S8]) Why is the stochastic integral defined with left endpoints?
+\item ([S9]) Find the distribution of $\int_0^Tt\dd W_t$.
+\item ([S12]) Find the mean and variance of $\int_0^TW_t\dd W_t$.
+\item ([S14]) Compute $(\dd X)^2$ for $\dd X=\mu\dd t+\sigma\dd W$ and $(\dd S)^2$ for $\dd S=\mu S\dd t+\sigma S\dd W$.
+\item ([S22]) $\dd X=\mu\dd t+\sigma\dd W$, $Y=X^2$. Find $\dd Y$.
+\item ([S23]) Same $X$, $Y=e^{X+t}$. Find $\dd Y$.
+\item Use It\^o's formula to show $\int_0^TW\dd W=\frac12W_T^2-\frac12T$.
+\item Solve $\dd S=\mu S\dd t+\sigma S\dd W$ and find $\E[S_t]$.
+\end{enumerate}
+\subsection*{Solutions}
+\addcontentsline{toc}{subsection}{Solutions}
+\begin{enumerate}[label=S\arabic*.]
+\item $\N(S_0+\mu t,\sigma^2t)$; $\Prob(S_t<0)=\Phi\big(-\frac{S_0+\mu t}{\sigma\sqrt t}\big)>0$.
+\item $\mu(t,S_t)$ uses the price at the start of the step, already known. $W$ is nowhere differentiable; the SDE means the integral equation.
+\item Previsibility: the integrand (a position) is fixed before the increment is revealed; other points give different limits.
+\item Deterministic integrand: $\N(0,\int_0^Tt^2\dd t)=\N(0,T^3/3)$.
+\item Mean 0; variance $\int_0^T\E[W_t^2]\dd t=T^2/2$.
+\item $\sigma^2\dd t$; $\sigma^2S^2\dd t$.
+\item $\dd Y=(2\mu X+\sigma^2)\dd t+2\sigma X\dd W$.
+\item $\dd Y=(1+\mu+\frac12\sigma^2)Y\dd t+\sigma Y\dd W$.
+\item $f(w)=w^2$: $\dd(W^2)=2W\dd W+\dd t$; integrate: $W_T^2=2\int W\dd W+T$.
+\item $\dd\ln S=(\mu-\frac12\sigma^2)\dd t+\sigma\dd W$, $S_t=S_0e^{(\mu-\frac12\sigma^2)t+\sigma W_t}$; $\E[S_t]=S_0e^{(\mu-\frac12\sigma^2)t}e^{\frac12\sigma^2t}=S_0e^{\mu t}$.
+\end{enumerate}
+
+\section*{Appendix A. Slide coverage checklist}
+\addcontentsline{toc}{section}{Appendix A. Slide coverage checklist}
+{\small\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Slide & Content & Section\\\midrule
+S2 & $S_t=S_0+\mu t+\sigma W_t$; mean and variance & 1.1\\
+S3 & Integral and differential forms; state-dependent coefficients & 1.2\\
+S4--S5 & Deterministic and stochastic components; $\dd S/\dd t$ not feasible & 1.3\\
+S6--S7 & Integral form; Riemann integral & 1.4\\
+S8 & Stochastic integral; previsibility & 1.5\\
+S9 & Properties; It\^o isometry & 1.6\\
+S10--S11 & Proofs of (1) and (2) & 1.7\\
+S12 & Example $\int W\dd W$ & 1.8\\
+S13--S14 & Strong law; box calculus & 1.9\\
+S15--S18 & History; why It\^o's formula & 1.10\\
+S19--S21 & Taylor: ordinary, $f(W_t)$, $f(S_t)$ & 1.11\\
+S22 & It\^o's formula; example $X^2$ & 1.12\\
+S23 & It\^o's formula with time; example $e^{X+t}$ & 1.13\\\bottomrule
+\end{tabularx}}
+
+\section*{Appendix B. Flag summary (\flag)}
+\addcontentsline{toc}{section}{Appendix B. Flag summary}
+\begin{enumerate}
+\item {}[S3] ``A stochastic process is a continuous process that can be written \ldots'': this defines an It\^o process, not every stochastic process.
+\item {}[S9] Property (3) needs a deterministic integrand; (2) and (5) are the same statement.
+\item {}[S10--S11] Exchange of $\E$ and $\lim$ is justified by mean-square convergence, not shown.
+\item {}[S13] The strong law should read $\Prob(\lim_n\frac1n\sum X_i=\mu)=1$. The real reason $(\Delta W)^2\approx\Delta t$ is quadratic variation $\sum(\Delta W)^2\to T$.
+\item {}[S4, S12, S22, S23] Questions and examples posed without worked answers; the solutions here are my own.
+\end{enumerate}
+\end{document}

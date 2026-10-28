@@ -1,0 +1,446 @@
+\documentclass[10pt]{article}
+\newcommand{\sessnum}{8}
+\newcommand{\sesstitle}{Static Replication of European Payoffs}
+\usepackage{qf620style}
+\begin{document}
+\begin{center}
+{\LARGE\bfseries QF620 Stochastic Modelling in Finance --- Session 8\\[2pt] Reference Cheatsheet}\\[6pt]
+{\large Static Replication of European Payoffs: stochastic-vol parameters and the smile, Leibniz's rule, model-free pricing, Breeden--Litzenberger, Carr--Madan, log contracts, variance swaps and VIX, digital options}\\[4pt]
+{\small Built from Session 8 slides (Tee Chyng Wen, SMU) $\cdot$ October 2026 $\cdot$ revised edition with intuition and full slide derivations}
+\end{center}
+\tableofcontents
+\vspace{4pt}
+\textbf{Source:} ``Session 8: Static Replication of European Payoffs'' (Tee Chyng Wen, SMU, 29 slides).
+
+\legend
+
+\textbf{What you must be able to do after this session:} explain what $\rho$ and $\nu$ do to the distribution and the smile; state and use Leibniz's rule; derive Breeden--Litzenberger; derive the Carr--Madan formula by integrating by parts twice and using put--call parity; replicate power and log payoffs; derive the variance-swap fair strike; value a digital by static replication and approximate it with a call spread.
+
+\section*{Notation used throughout (slide conventions)}
+\addcontentsline{toc}{section}{Notation used throughout (slide conventions)}
+{\small\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Symbol & Meaning & Notes\\\midrule
+$\rho,\ \nu$ & spot--vol correlation; vol-of-vol (SABR/Heston) & [S2--S7]\\
+$f(s)$ & risk-neutral density of $S_T$ & [S10, S14]\\
+$C(K),\ P(K)$ & European call / put price with strike $K$, expiry $T$ & [S10, S15]\\
+$F$ & forward $S_0e^{rT}$ (on [S8--S9] $F$ is an antiderivative) & [S16]\\
+$h(S_T)$ & European payoff; $h',h''$ its derivatives & [S16]\\
+$V_0$ & today's value of the payoff & [S16]\\
+$\sigma_R^2,\ \sigma_K^2$ & realized variance; strike variance & [S22]\\
+$\sigma_t$ & (possibly stochastic) instantaneous volatility & [S23]\\
+$\bar K$ & digital strike & [S28]\\\bottomrule
+\end{tabularx}}
+
+\section*{0. Topic map}
+\addcontentsline{toc}{section}{0. Topic map}
+\begin{lstlisting}
+PREREQUISITES: S6 smile, SABR/Heston ; S4 Itô ; S5/S7 risk-neutral pricing, BS call ; calculus (by parts)
+    ▼
+SESSION 8
+├─ STOCH-VOL PARAMETERS [S2–S7]
+│     ├─ ρ < 0: fat left tail ⇒ OTM puts up, calls down (skew)                   [S2–S4]
+│     └─ ν ↑: kurtosis, both tails fat ⇒ OTM puts and calls up (curvature)       [S5–S7]
+├─ LEIBNIZ [S8–S9]
+│     └─ d/dx ∫_{u(x)}^{v(x)} f(x,t)dt = f(x,v)v′ − f(x,u)u′ + ∫∂f/∂x dt          [S8–S9]
+├─ MODEL-FREE & BREEDEN–LITZENBERGER [S10–S15]
+│     ├─ C(K) = e^{−rT}∫_K^∞ (s−K) f(s) ds ; extract f from many quotes           [S10–S13]
+│     └─ ∂C/∂K = −e^{−rT}∫_K^∞ f ; ∂²C/∂K² = ∂²P/∂K² = e^{−rT} f(K)               [S14–S15]
+├─ CARR–MADAN [S16–S21]
+│     ├─ V₀ = ∫_0^F h P″ dK + ∫_F^∞ h C″ dK ; by parts twice ; parity             [S16–S18]
+│     ├─ V₀ = e^{−rT}h(F) + ∫_0^F h″P dK + ∫_F^∞ h″C dK                          [S19]
+│     └─ examples: a S_T^b ; log contract                                       [S20–S21]
+├─ VARIANCE SWAPS & VIX [S22–S26]
+│     ├─ σ²dt = 2dS/S − 2d log S ⇒ E∫σ²dt = 2rT − 2E log(S_T/S₀)                 [S22–S24]
+│     └─ E*∫σ²dt = 2e^{rT}[∫_0^F P/K² + ∫_F^∞ C/K²] ; VIX                        [S25–S26]
+└─ DISCONTINUOUS PAYOFFS [S27–S29]
+      └─ digital = −∂C(K̄)/∂K ≈ call spread                                       [S27–S29]
+\end{lstlisting}
+\textbf{The storyline of the session.}
+\begin{itemize}
+\item Stochastic-vol parameters reshape the risk-neutral distribution ($\rho$ skews it, $\nu$ fattens both tails). The smile is just the market's picture of that distribution.
+\item If calls trade at every strike, differentiating $C(K)$ twice in $K$ recovers the density with no model (\textbf{Breeden--Litzenberger}). Leibniz's rule is the tool.
+\item Any European payoff's price is an integral of the density. Substitute $f=e^{rT}\partial^2C/\partial K^2$ and integrate by parts twice: the payoff becomes a bond $+$ forwards $+$ a strip of OTM options (\textbf{Carr--Madan}). This hedge is \emph{static}: set up once, never rebalanced, no model.
+\item It\^o turns realized variance into $2\frac{\dd S}{S}-2\dd\log S$: a dynamic position worth $2rT$ plus a log contract, which is replicated statically with $1/K^2$-weighted options. That is how variance swaps and the VIX are priced.
+\end{itemize}
+
+\section{Concept entries}
+
+\subsection{Correlation $\rho$: distribution and pricing [S2--S4]}
+\begin{idea}
+With $\rho<0$, when the stock falls volatility rises, so down-moves come in bigger, wilder steps and the left tail spreads out; up-moves happen in a calm regime and the right tail stays thin. Result: negative skew. OTM puts pay off in the left tail, so they become more valuable; OTM calls lose. In implied-vol terms the smile slopes down. $\rho>0$ is the mirror image.
+\end{idea}
+\begin{itemize}
+\item $\rho$ controls the \textbf{skewness} of stock returns [S2].
+\item $\rho<0$: fat left tail, thin right tail $\Rightarrow$ OTM puts up, OTM calls down relative to Black--Scholes [S2--S3].
+\item $\rho>0$: fat right tail, thin left tail $\Rightarrow$ positive skew [S2--S3].
+\item Smile picture [S4]: $\rho=-0.5$ implied vol falls with strike; $\rho=0$ roughly symmetric; $\rho=+0.5$ tilts up.
+\end{itemize}
+\begin{exam}
+\flag{} [S2] says $\rho$ is ``proportional'' to skewness; the relation is monotone (higher $\rho$, more positive skew), not literally proportional.
+\end{exam}
+
+\subsection{Vol-of-vol $\nu$: distribution and pricing [S5--S7]}
+\begin{idea}
+Random volatility mixes calm-regime normals (narrow) with turbulent-regime normals (wide). A mixture of normals with different widths has a sharper peak and fatter tails than one normal: higher kurtosis. Both tails gain, so both OTM puts and OTM calls get dearer: the smile acquires curvature (both wings lift). Without correlation, $\nu$ adds kurtosis only; skew comes from $\rho$.
+\end{idea}
+\begin{itemize}
+\item $\nu=0$: volatility is deterministic [S6].
+\item $\nu>0$ increases kurtosis: two fat tails [S5--S6] $\Rightarrow$ raises both OTM put and call prices [S5, S7].
+\item If $\rho=0$, raising $\nu$ only adds kurtosis: far-from-the-money options gain relative to near-the-money [S5].
+\item Smile picture [S7]: larger $\nu$ lifts both wings.
+\end{itemize}
+\begin{exam}
+\flag{} [S5] ``back to a normal log-return distribution (if $\beta=0$)'' should read $\beta=1$; with $\beta=0$, $\nu=0$ the returns are normal in price units (Bachelier).
+\end{exam}
+
+\subsection{Differentiating integrals; Leibniz's rule [S8--S9]}
+\begin{idea}
+An integral $\int_{u(x)}^{v(x)}f(x,t)\dd t$ depends on $x$ in three places: the top limit, the bottom limit, and the integrand. Its derivative collects one term for each. Moving the top limit up by $\dd v$ adds a thin sliver of area of height $f$ at the top; moving the bottom limit up removes one at the bottom; and changing the integrand changes the area everywhere in between. You need this to differentiate an option price with respect to its strike, which appears both as a limit and inside the payoff.
+\end{idea}
+\begin{deriv}[{Derivation {[S8--S9]}}]
+Chain rule for $g(u(x),v(x))$: $\frac{\dd g}{\dd x}=\frac{\partial g}{\partial u}u'(x)+\frac{\partial g}{\partial v}v'(x)$ [S8]. Let $F$ be an antiderivative of $f$ in $t$:
+\vspace{-4pt}
+\begin{align*}
+I(v,u,x)&=\int_{u(x)}^{v(x)}f(x,t)\dd t=F(x,v(x))-F(x,u(x)) && \why{fundamental theorem}\\
+\frac{\partial I}{\partial v}&=f(x,v(x)),\qquad\frac{\partial I}{\partial u}=-f(x,u(x)) && \why{$\partial_tF=f$}\\
+\frac{\dd I}{\dd x}&=\frac{\partial I}{\partial v}v'(x)+\frac{\partial I}{\partial u}u'(x)+\frac{\partial I}{\partial x}\frac{\dd x}{\dd x} && \why{chain rule, 3 arguments}\\
+&=f(x,v(x))v'(x)-f(x,u(x))u'(x)+\int_{u(x)}^{v(x)}\frac{\partial f(x,t)}{\partial x}\dd t && \why{[S9]}
+\end{align*}
+Special case $f=f(t)$: $\frac{\dd}{\dd x}\int_{u(x)}^{v(x)}f(t)\dd t=f(v(x))v'(x)-f(u(x))u'(x)$.
+\end{deriv}
+\begin{where}
+\w{$f(x,v)v'$}{moving the upper limit adds a sliver of height $f$ at the top.}
+\w{$-f(x,u)u'$}{moving the lower limit removes a sliver at the bottom.}
+\w{$\int\partial_xf\dd t$}{the integrand itself changing with $x$ (zero if $f=f(t)$ only).}
+\end{where}
+
+\subsection{The model-free framework [S10--S11]}
+\begin{idea}
+All European prices are discounted risk-neutral expectations, i.e.\ integrals against the risk-neutral density $f$. Usually we pick a model (Black--Scholes, Bachelier, DD, SABR), calibrate it, and the model dictates $f$. But if options trade at many strikes, the market prices themselves pin down $f$. Skip the model and read $f$ off the prices directly.
+\end{idea}
+\[C(K)=e^{-rT}\E^*[(S_T-K)^+]=e^{-rT}\int_K^\infty(s-K)f(s)\dd s.\]
+\begin{where}
+\w{$f(s)$}{risk-neutral density of $S_T$, not specified by a model.}
+\w{$\int_K^\infty$}{the payoff is zero for $s<K$.}
+\end{where}
+Model-based [S10]: e.g.\ Black--Scholes $C(K)=\frac{e^{-rT}}{\sqrt{2\pi}}\int_{x^*}^\infty(S_0e^{(r-\frac{\sigma^2}{2})T+\sigma\sqrt Tx}-K)e^{-x^2/2}\dd x$; once calibrated, the density is fixed. Model-free [S11]: with enough liquid quotes $C(K_1),C(K_2),\dots$ extract $f$ directly.
+
+\subsection{Implied risk-neutral density: motivation [S12--S13]}
+\begin{itemize}
+\item Black--Scholes assumes $\dd S_t=rS_t\dd t+\sigma S_t\dd W^*_t$ under $\Q^*$ with one parameter $\sigma$ [S12].
+\item Vanilla options are liquid; their prices are observed. Inverting gives one implied vol per strike and maturity [S12--S13].
+\item Next level: for a given maturity, find the implied \emph{distribution} that matches the whole smile. The tool is Leibniz's rule [S13].
+\end{itemize}
+
+\subsection{Breeden--Litzenberger (1978) [S14--S15]}
+\begin{idea}
+Differentiate the call price with respect to strike. The first derivative is (minus, discounted) the probability of finishing above $K$: raising the strike by 1 costs you \$1 in every in-the-money scenario. The second derivative is the density at $K$. Intuition: a butterfly $C(K-\Delta)-2C(K)+C(K+\Delta)$ pays a small tent around $K$, so its price is roughly ``probability of landing near $K$'' $\times$ discount. Prices of options across strikes are therefore a complete map of the risk-neutral distribution.
+\end{idea}
+\begin{deriv}[{First and second strike derivatives of the call {[S14]}}]
+Apply Leibniz with $x=K$, $u(K)=K$ ($u'=1$), $v=\infty$ ($v'=0$), integrand $(s-K)f(s)$:
+\vspace{-4pt}
+\begin{align*}
+\frac{\partial C}{\partial K}&=e^{-rT}\Big[\lim_{x\to\infty}(x-K)f(x)\frac{\dd x}{\dd K}-(K-K)f(K)\frac{\dd K}{\dd K}+\int_K^\infty\frac{\partial(s-K)}{\partial K}f(s)\dd s\Big] && \why{Leibniz}\\
+&=e^{-rT}\Big[0-0-\int_K^\infty f(s)\dd s\Big]=-e^{-rT}\int_K^\infty f(s)\dd s && \why{$\tfrac{\dd x}{\dd K}=0$; payoff 0 at $K$}\\
+\frac{\partial^2C}{\partial K^2}&=-e^{-rT}\Big[\lim_{x\to\infty}f(x)\frac{\dd x}{\dd K}-f(K)\frac{\dd K}{\dd K}+\int_K^\infty\frac{\partial f(s)}{\partial K}\dd s\Big] && \why{Leibniz again}\\
+&=-e^{-rT}\big[0-f(K)+0\big]=e^{-rT}f(K) && \why{$f(s)$ has no $K$}
+\end{align*}
+\end{deriv}
+\begin{deriv}[{Same for puts {[S15]} \beyond{} (the slide states the result)}]
+$P(K)=e^{-rT}\int_0^K(K-s)f(s)\dd s$. Leibniz with upper limit $K$: $\frac{\partial P}{\partial K}=e^{-rT}\big[(K-K)f(K)\cdot1+\int_0^Kf(s)\dd s\big]=e^{-rT}\int_0^Kf(s)\dd s$, and $\frac{\partial^2P}{\partial K^2}=e^{-rT}f(K)$.
+\end{deriv}
+\[\boxed{\frac{\partial^2C(K)}{\partial K^2}=\frac{\partial^2P(K)}{\partial K^2}=e^{-rT}f(K)}\qquad\text{(Breeden--Litzenberger, 1978)}\]
+\begin{where}
+\w{$-e^{rT}\frac{\partial C}{\partial K}$}{$=\Q^*(S_T>K)$ \beyond{} (price of a digital, see 1.15).}
+\w{$f(K)$}{the implied distribution: curvature of price in strike.}
+\end{where}
+\begin{itemize}
+\item \beyond{} Butterfly: $\frac{C(K-\Delta)-2C(K)+C(K+\Delta)}{\Delta^2}\approx e^{-rT}f(K)$; convexity of $C$ in $K$ is a no-arbitrage condition ($f\ge0$).
+\item \textbf{Carr--Madan (1998):} any European payoff can be replicated using cash, forwards and European calls and puts [S15].
+\end{itemize}
+
+\subsection{Static replication: setup [S16]}
+\begin{idea}
+The value of any payoff $h(S_T)$ is $e^{-rT}\int hf$. Replace $e^{-rT}f(K)$ by the second strike-derivative of option prices: below the forward use puts, above use calls (these are the liquid OTM options). The rest is calculus: integrate by parts twice to move the derivatives off the option prices and onto $h$.
+\end{idea}
+For twice-differentiable $h$, with $F=S_0e^{rT}$:
+\[V_0=e^{-rT}\E[h(S_T)]=e^{-rT}\int_0^\infty h(s)f(s)\dd s=\underbrace{\int_0^Fh(K)\frac{\partial^2P(K)}{\partial K^2}\dd K}_{(1)}+\underbrace{\int_F^\infty h(K)\frac{\partial^2C(K)}{\partial K^2}\dd K}_{(2)}.\]
+\begin{where}
+\w{$e^{-rT}f(K)$}{replaced by $P''$ below $F$ and $C''$ above (Breeden--Litzenberger); discount absorbed.}
+\w{$s\to K$}{dummy variable renamed as a reminder the derivatives are in strike.}
+\w{split at $F$}{uses liquid OTM/ATM options: low-strike puts, high-strike calls.}
+\end{where}
+
+\subsection{Integration by parts twice [S17--S18]}
+\begin{deriv}[{Call integral (2) {[S17]} --- every line}]
+By parts: $\int hC''=[hC']-\int h'C'$, then $\int h'C'=[h'C]-\int h''C$.
+\vspace{-4pt}
+\begin{align*}
+\int_F^\infty h(K)\frac{\partial^2C}{\partial K^2}\dd K&=\Big[h(K)\frac{\partial C}{\partial K}\Big]_F^\infty-\int_F^\infty h'(K)\frac{\partial C}{\partial K}\dd K && \why{by parts, 1st time}\\
+&=\Big[h(K)\frac{\partial C}{\partial K}\Big]_F^\infty-\Big[h'(K)C(K)\Big]_F^\infty+\int_F^\infty h''(K)C(K)\dd K && \why{by parts, 2nd time}\\
+&=\Big[0-h(F)\frac{\partial C(F)}{\partial K}\Big]-\Big[0-h'(F)C(F)\Big]+\int_F^\infty h''C\dd K && \why{$C(\infty)=C'(\infty)=0$}\\
+&=-h(F)\frac{\partial C(F)}{\partial K}+h'(F)C(F)+\int_F^\infty h''(K)C(K)\dd K
+\end{align*}
+\end{deriv}
+\begin{deriv}[{Put integral (1) {[S18]} \beyond{} (same steps; $P(0)=P'(0)=0$)}]
+\vspace{-6pt}
+\begin{align*}
+\int_0^Fh\frac{\partial^2P}{\partial K^2}\dd K&=\Big[h\frac{\partial P}{\partial K}\Big]_0^F-\Big[h'P\Big]_0^F+\int_0^Fh''P\dd K=h(F)\frac{\partial P(F)}{\partial K}-h'(F)P(F)+\int_0^Fh''(K)P(K)\dd K
+\end{align*}
+\end{deriv}
+\begin{deriv}[{Combining (1) $+$ (2) {[S18]}}]
+\[V_0=h(F)\Big[-\frac{\partial C(F)}{\partial K}+\frac{\partial P(F)}{\partial K}\Big]+h'(F)\big[C(F)-P(F)\big]+\int_0^Fh''(K)P(K)\dd K+\int_F^\infty h''(K)C(K)\dd K.\]
+\end{deriv}
+
+\subsection{Carr--Madan static replication formula [S18--S19]}
+\begin{idea}
+Put--call parity cleans up the two boundary terms. Its strike-derivative says $C'-P'=-e^{-rT}$, so the first bracket is $e^{-rT}$: a zero-coupon bond paying $h(F)$. At $K=F$ the call and put are worth the same, so the second bracket vanishes (it corresponds to $h'(F)$ forwards, which are worth zero today but are part of the hedge). What remains: bond $+$ a strip of OTM puts and calls, each weighted by the payoff's curvature $h''(K)$. Convex payoffs mean long options, concave payoffs mean short options, linear payoffs need no options at all.
+\end{idea}
+\begin{deriv}[{Using put--call parity {[S18--S19]}}]
+\vspace{-6pt}
+\begin{align*}
+C(K)-P(K)&=S_0-Ke^{-rT} && \why{put--call parity}\\
+\frac{\partial C}{\partial K}-\frac{\partial P}{\partial K}&=-e^{-rT}\ \Rightarrow\ -\frac{\partial C(F)}{\partial K}+\frac{\partial P(F)}{\partial K}=e^{-rT} && \why{differentiate in $K$}\\
+C(F)-P(F)&=S_0-Fe^{-rT}=S_0-S_0e^{rT}e^{-rT}=0 && \why{$K=F$}
+\end{align*}
+\[\boxed{V_0=e^{-rT}h(F)+\int_0^Fh''(K)P(K)\dd K+\int_F^\infty h''(K)C(K)\dd K}\]
+\end{deriv}
+\begin{where}
+\w{$e^{-rT}h(F)$}{zero-coupon bond paying $h(F)$.}
+\w{forward term}{$h'(F)[C(F)-P(F)]$: $h'(F)$ forwards struck at $F$; worth zero today, so absent from the price but held in the hedge \beyond.}
+\w{$h''(K)P(K)$}{hold $h''(K)\dd K$ OTM puts at each strike $K<F$.}
+\w{$h''(K)C(K)$}{hold $h''(K)\dd K$ OTM calls at each strike $K>F$.}
+\end{where}
+\beyond{} Payoff-level identity: $h(S_T)=h(F)+h'(F)(S_T-F)+\int_0^Fh''(K)(K-S_T)^+\dd K+\int_F^\infty h''(K)(S_T-K)^+\dd K$ (Taylor with integral remainder). The hedge is static and model-free: only today's option prices are needed.
+
+\subsection{Example: power payoff $aS_T^b$ [S20]}
+\begin{deriv}[{{[S20]}}]
+$h(S)=aS^b$, $h'=abS^{b-1}$, $h''=ab(b-1)S^{b-2}$; $h(F)=aF^b$. Plug into Carr--Madan:
+\[V_0=e^{-rT}aF^b+\int_0^Fab(b-1)K^{b-2}P(K)\dd K+\int_F^\infty ab(b-1)K^{b-2}C(K)\dd K.\]
+\end{deriv}
+\begin{where}
+\w{$ab(b-1)K^{b-2}$}{option weight: positive for $b>1$ (convex, long options); negative for $0<b<1$ (concave, short); zero for $b=1$ (just a forward).}
+\w{check}{\beyond{} under Black--Scholes $V_0=e^{-rT}aS_0^b\exp[b(r-\frac12\sigma^2)T+\frac12b^2\sigma^2T]$ (MGF).}
+\end{where}
+
+\subsection{Log contract [S21]}
+\begin{deriv}[{(1) Black--Scholes value (worked here)}]
+Under $\Q^*$, $\log\frac{S_T}{S_0}=(r-\frac12\sigma^2)T+\sigma W^*_T$, so $\E^*[\log\frac{S_T}{S_0}]=(r-\frac12\sigma^2)T$ and $V_0=e^{-rT}(r-\frac12\sigma^2)T$.
+\end{deriv}
+\begin{deriv}[{(2) Carr--Madan replication (worked here)}]
+$h(K)=\log\frac{K}{S_0}$, $h'=\frac1K$, $h''=-\frac1{K^2}$; $h(F)=\log\frac{S_0e^{rT}}{S_0}=rT$:
+\[V_0=e^{-rT}rT-\int_0^F\frac{P(K)}{K^2}\dd K-\int_F^\infty\frac{C(K)}{K^2}\dd K.\]
+Short a strip of OTM options with weight $1/K^2$ (the log is concave). Equating (1) and (2) under Black--Scholes: $\int_0^F\frac{P}{K^2}\dd K+\int_F^\infty\frac{C}{K^2}\dd K=e^{-rT}\frac{\sigma^2T}{2}$.
+\end{deriv}
+
+\subsection{Variance swaps: contract [S22]}
+\begin{idea}
+A variance swap pays the difference between realized variance and a fixed strike. It gives pure exposure to volatility, with no need to delta- or gamma-hedge vanilla options. Its fair strike is the risk-neutral expectation of realized variance, and the next entry shows that expectation is a model-free strip of options.
+\end{idea}
+\[\text{Payoff}=\text{Notional}\times(\sigma_R^2-\sigma_K^2),\qquad \sigma_R^2=\frac{252}{N}\sum_{i=1}^N\Big(\log\frac{S_{t_i}}{S_{t_{i-1}}}\Big)^2.\]
+\begin{where}
+\w{$\sigma_R^2$}{realized annualized variance from daily log returns (zero mean assumed).}
+\w{$\sigma_K^2$}{strike variance; the fair strike makes the swap worth zero at inception.}
+\w{252, $N$}{trading days per year; days in the contract.}
+\end{where}
+
+\subsection{Variance swaps: pricing [S23--S25]}
+\begin{idea}
+It\^o's formula is the bridge. For $\log S$, the $\dd t$ term is $-\frac12\sigma_t^2$, so variance equals ``twice the return $\dd S/S$ minus twice the log-return''. The $\dd S/S$ part is a continuously rebalanced position whose risk-neutral value is simply $2rT$; the log part is a log contract held to expiry, which Carr--Madan replicates statically. This works for \emph{any} volatility process $\sigma_t$: model-free.
+\end{idea}
+\begin{deriv}[{From It\^o to options {[S23--S25]}}]
+$\sum_i\log^2\frac{S_{t_i}}{S_{t_{i-1}}}\approx\int_0^T\sigma_t^2\dd t$ [S23]. For $\dd S_t=rS_t\dd t+\sigma_tS_t\dd W^*_t$:
+\vspace{-4pt}
+\begin{align*}
+\dd\log S_t&=\frac{\dd S_t}{S_t}-\frac12\frac{(\dd S_t)^2}{S_t^2}=\frac{\dd S_t}{S_t}-\frac12\sigma_t^2\dd t && \why{It\^o, $f''=-1/S^2$}\\
+\sigma_t^2\dd t&=2\Big(\frac{\dd S_t}{S_t}-\dd\log S_t\Big) && \why{rearrange}\\
+\int_0^T\sigma_t^2\dd t&=2\int_0^T\frac{\dd S_t}{S_t}-2\log\frac{S_T}{S_0} && \why{integrate}\\
+\E^*\Big[\int_0^T\sigma_t^2\dd t\Big]&=2\E^*\Big[\int_0^T\frac{\dd S_t}{S_t}\Big]-2\E^*\Big[\log\frac{S_T}{S_0}\Big] && \why{take $\E^*$}\\
+2\E^*\Big[\int_0^T\frac{rS_t\dd t+\sigma_tS_t\dd W^*_t}{S_t}\Big]&=2rT && \why{$\E^*\int\sigma\dd W^*=0$}\\
+2\E^*\Big[\log\frac{S_T}{S_0}\Big]&=2\log\frac{F}{S_0}-2e^{rT}\int_0^F\frac{P}{K^2}\dd K-2e^{rT}\int_F^\infty\frac{C}{K^2}\dd K && \why{1.11 $\times2e^{rT}$}\\
+&=2rT-2e^{rT}\int_0^F\frac{P}{K^2}\dd K-2e^{rT}\int_F^\infty\frac{C}{K^2}\dd K && \why{$\log\frac{F}{S_0}=rT$}
+\end{align*}
+Subtract: the $2rT$ terms cancel.
+\[\boxed{\E^*\Big[\int_0^T\sigma_t^2\dd t\Big]=2e^{rT}\Big[\int_0^F\frac{P(K)}{K^2}\dd K+\int_F^\infty\frac{C(K)}{K^2}\dd K\Big],\qquad \sigma_K^2=\frac1T\E^*\Big[\int_0^T\sigma_t^2\dd t\Big]\ \text{\beyond}}\]
+\end{deriv}
+\begin{where}
+\w{$2\int\dd S/S$}{continuously rebalanced position holding $2/S_t$ shares (dynamic), worth $2rT$.}
+\w{$-2\log(S_T/S_0)$}{short two log contracts (static).}
+\w{$2e^{rT}$}{forward value: scales today's option prices to time $T$.}
+\w{$1/K^2$}{weights: much more on low-strike puts than high-strike calls $\Rightarrow$ skew-sensitive [S25].}
+\end{where}
+\begin{exam}
+\flag{} [S25] writes $\E$ without the $*$; it is the risk-neutral expectation. Sanity check \beyond: under Black--Scholes, using 1.11, the strip equals $e^{-rT}\frac{\sigma^2T}{2}$, so $\E^*\int\sigma^2\dd t=\sigma^2T$ and $\sigma_K=\sigma$ \checkmark.
+\end{exam}
+
+\subsection{VIX index [S26]}
+\[\sigma^2=\frac2T\sum_i\frac{\Delta K_i}{K_i^2}e^{RT}Q(K_i)-\frac1T\Big[\frac{F}{K_0}-1\Big]^2,\qquad \text{VIX}=100\,\sigma.\]
+\begin{where}
+\w{$Q(K_i)$}{mid of the OTM option at $K_i$: call if $K_i>K_0$, put if $K_i<K_0$, average at $K_0$.}
+\w{$K_0$}{first strike below the forward $F$ (the discrete split point).}
+\w{$\Delta K_i$}{$(K_{i+1}-K_{i-1})/2$; one-sided at the ends.}
+\w{first term}{discrete Riemann sum of $\frac{2e^{rT}}{T}[\int_0^F\frac{P}{K^2}+\int_F^\infty\frac{C}{K^2}]$ from 1.13.}
+\w{correction}{\beyond{} adjusts for splitting at $K_0\neq F$; zero if $K_0=F$.}
+\end{where}
+
+\subsection{Payoffs with discontinuities [S27--S28]}
+\begin{idea}
+Carr--Madan needs $h''$, which does not exist at a jump. So go back one step: start from $\int h\,C''$ (or $P''$) and integrate by parts on the pieces where $h$ is smooth. For a digital call the payoff is flat (1) beyond the strike, so after integration by parts only one boundary term survives: minus the slope of the call price at $\bar K$.
+\end{idea}
+Start from $V_0=e^{-rT}\int_0^\infty h(K)f(K)\dd K=\int_0^Fh\frac{\partial^2P}{\partial K^2}\dd K+\int_F^\infty h\frac{\partial^2C}{\partial K^2}\dd K$ and integrate by parts twice on each smooth piece [S27].
+\begin{deriv}[{Cash-or-nothing digital call {[S28]}, $h=\mathbb 1_{\{S_T\ge\bar K\}}$, $\bar K\ge F$}]
+$h=0$ on $[0,\bar K)$, so only $\int_{\bar K}^\infty$ survives; there $h=1$, $h'=h''=0$:
+\vspace{-4pt}
+\begin{align*}
+V_0&=\int_{\bar K}^\infty h(K)\frac{\partial^2C}{\partial K^2}\dd K=\Big[h\frac{\partial C}{\partial K}\Big]_{\bar K}^\infty-\Big[h'C\Big]_{\bar K}^\infty+\int_{\bar K}^\infty h''C\dd K && \why{by parts twice}\\
+&=\Big[0-1\cdot\frac{\partial C(\bar K)}{\partial K}\Big]-0+0=-\frac{\partial C(\bar K)}{\partial K} && \why{$C'(\infty)=0$}
+\end{align*}
+By Breeden--Litzenberger this is $e^{-rT}\int_{\bar K}^\infty f=e^{-rT}\Q^*(S_T>\bar K)$; under Black--Scholes $e^{-rT}\Phi(d_2)$ \beyond.
+\end{deriv}
+
+\subsection{Digital via call spread [S29]}
+\[-\frac{\partial C(\bar K)}{\partial K}\approx\frac{C(\bar K-\Delta K)-C(\bar K)}{\Delta K}.\]
+\begin{where}
+\w{$1/\Delta K$}{long $1/\Delta K$ calls at $\bar K-\Delta K$, short $1/\Delta K$ calls at $\bar K$.}
+\w{payoff}{0 below $\bar K-\Delta K$, linear ramp to 1 at $\bar K$, then 1: converges to the digital as $\Delta K\to0$ (slide: $\bar K=50$, $\Delta K=0.10,0.05,0.01$).}
+\end{where}
+\beyond{} This one-sided spread pays at least the digital (super-replicates); in practice the spread is limited by strike spacing and the large notional $1/\Delta K$.
+
+\subsection{Implementation \beyond{} (tested)}
+\begin{lstlisting}[language=Python]
+import numpy as np
+from scipy.stats import norm
+from scipy.integrate import quad
+S0, r, sigma, T = 100.0, 0.05, 0.2, 1.0
+F, D = S0*np.exp(r*T), np.exp(-r*T)
+def call(K):
+    d1 = (np.log(S0/K) + (r + 0.5*sigma**2)*T) / (sigma*np.sqrt(T))
+    return S0*norm.cdf(d1) - K*D*norm.cdf(d1 - sigma*np.sqrt(T))
+def put(K):                                   # put-call parity
+    return call(K) - S0 + K*D
+# 1) Breeden-Litzenberger: f(K) = e^{rT} d2C/dK2 (central difference)
+K, h = 110.0, 0.01
+f_BL = (call(K + h) - 2*call(K) + call(K - h)) / h**2 / D
+m, s = np.log(S0) + (r - 0.5*sigma**2)*T, sigma*np.sqrt(T)
+print(round(f_BL, 6), round(norm.pdf((np.log(K) - m)/s)/(K*s), 6))   # 0.017192 0.017192
+# 2) Carr-Madan: V0 = D h(F) + int_0^F h''P dK + int_F^inf h''C dK
+def carr_madan(h, h2):
+    return (D*h(F) + quad(lambda k: h2(k)*put(k), 1e-8, F, limit=200)[0]
+                   + quad(lambda k: h2(k)*call(k), F, np.inf, limit=200)[0])
+a, b = 1.0, 2.0                               # payoff a S_T^b
+print(round(carr_madan(lambda k: a*k**b, lambda k: a*b*(b-1)*k**(b-2)), 4),
+      round(D*a*S0**b*np.exp(b*(r - 0.5*sigma**2)*T + 0.5*b**2*sigma**2*T), 4))  # 10941.7428 x2
+# 3) Log contract log(S_T/S0): BS value D (r - sigma^2/2) T
+print(round(carr_madan(lambda k: np.log(k/S0), lambda k: -1/k**2), 6),
+      round(D*(r - 0.5*sigma**2)*T, 6))       # 0.028537 0.028537
+# 4) Variance swap fair strike (2 e^{rT}/T)[int P/K^2 + int C/K^2] = sigma^2 under BS
+I = quad(lambda k: put(k)/k**2, 1e-8, F)[0] + quad(lambda k: call(k)/k**2, F, np.inf)[0]
+print(round(2*np.exp(r*T)*I/T, 6))            # 0.04
+# 5) Digital call 1{S_T >= Kb} = -dC/dK = D N(d2), via a call spread
+Kb, dK = 110.0, 0.01
+d2 = (np.log(S0/Kb) + (r - 0.5*sigma**2)*T) / (sigma*np.sqrt(T))
+print(round((call(Kb - dK) - call(Kb))/dK, 4), round(D*norm.cdf(d2), 4))   # 0.3539 0.3539
+\end{lstlisting}
+
+\section{Comparison tables}
+\subsection{What $\rho$ and $\nu$ do [S2--S7]}
+{\small\begin{tabularx}{\linewidth}{@{}l X X X@{}}\toprule
+ & $\rho<0$ & $\rho>0$ & $\nu\uparrow$ ($\rho=0$)\\\midrule
+Distribution & fat left, thin right tail (neg.\ skew) & fat right, thin left tail (pos.\ skew) & both tails fat (kurtosis)\\
+OTM puts & up & down & up\\
+OTM calls & down & up & up\\
+Smile & downward skew & upward skew & curvature (both wings up)\\\bottomrule
+\end{tabularx}}
+\subsection{Replication weights by payoff}
+{\small\begin{tabularx}{\linewidth}{@{}p{2.6cm} l l X@{}}\toprule
+Payoff $h(S_T)$ & $h(F)$ & $h''(K)$ & Replicating portfolio\\\midrule
+$aS_T^b$ [S20] & $aF^b$ & $ab(b-1)K^{b-2}$ & bond $aF^b$, $abF^{b-1}$ forwards, options weighted $ab(b-1)K^{b-2}$\\
+$\log\frac{S_T}{S_0}$ [S21] & $rT$ & $-1/K^2$ & bond $rT$, $1/F$ forwards, short OTM options weighted $1/K^2$\\
+$S_T^2$ \beyond & $F^2$ & $2$ & bond $F^2$, $2F$ forwards, 2 of every OTM option\\
+$\mathbb 1_{\{S_T\ge\bar K\}}$ [S28] & --- & n/a & limit of call spreads: $-\partial C(\bar K)/\partial K$\\\bottomrule
+\end{tabularx}}
+\subsection{Static vs dynamic replication}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Static (Carr--Madan) [S15--S19] & Dynamic (Black--Scholes delta hedge)\\\midrule
+Instruments & bond, forward, strip of OTM options & stock and bond\\
+Rebalancing & none: set up once & continuous\\
+Model needed & none (needs option prices at all strikes) & yes (dynamics and $\sigma$)\\
+Payoffs & European, depend on $S_T$ only & any replicable claim\\\bottomrule
+\end{tabularx}}
+
+\section{Master formula sheet}
+\begin{itemize}
+\item \textbf{Leibniz [S9]:} $\frac{\dd}{\dd x}\int_{u(x)}^{v(x)}f(x,t)\dd t=f(x,v)v'-f(x,u)u'+\int_u^v\partial_xf\dd t$.
+\item \textbf{Breeden--Litzenberger [S14--S15]:} $\frac{\partial C}{\partial K}=-e^{-rT}\int_K^\infty f\dd s$; $\frac{\partial^2C}{\partial K^2}=\frac{\partial^2P}{\partial K^2}=e^{-rT}f(K)$.
+\item \textbf{Carr--Madan [S19]:} $V_0=e^{-rT}h(F)+\int_0^Fh''(K)P(K)\dd K+\int_F^\infty h''(K)C(K)\dd K$, $F=S_0e^{rT}$; uses $C'-P'=-e^{-rT}$, $C(F)=P(F)$.
+\item Power: $h''=ab(b-1)K^{b-2}$. Log contract: $h(F)=rT$, $h''=-1/K^2$.
+\item \textbf{Variance swap [S22--S25]:} $\sigma_R^2=\frac{252}{N}\sum\log^2\frac{S_{t_i}}{S_{t_{i-1}}}$; $\int_0^T\sigma_t^2\dd t=2\int_0^T\frac{\dd S}{S}-2\log\frac{S_T}{S_0}$;\\ $\E^*\int_0^T\sigma_t^2\dd t=2e^{rT}[\int_0^F\frac{P}{K^2}\dd K+\int_F^\infty\frac{C}{K^2}\dd K]$.
+\item \textbf{VIX [S26]:} $\sigma^2=\frac2T\sum_i\frac{\Delta K_i}{K_i^2}e^{RT}Q(K_i)-\frac1T(\frac{F}{K_0}-1)^2$, VIX $=100\sigma$.
+\item \textbf{Digital [S28--S29]:} $V_0=-\partial C(\bar K)/\partial K\approx[C(\bar K-\Delta K)-C(\bar K)]/\Delta K$.
+\end{itemize}
+
+\section{Glossary}
+\begin{itemize}
+\item \textbf{Breeden--Litzenberger formula:} $\partial^2C/\partial K^2=e^{-rT}f(K)$ [S15]. \quad \textbf{Butterfly spread:} discrete second difference in strike; approximates the density \beyond.
+\item \textbf{Call spread:} long low-strike, short high-strike call; approximates a digital [S29].
+\item \textbf{Carr--Madan formula:} static replication of a European payoff with bond, forwards and OTM options [S15, S19].
+\item \textbf{Cash-or-nothing digital:} pays 1 if $S_T\ge\bar K$ [S28]. \quad \textbf{Implied (risk-neutral) distribution:} density implicit in option prices [S13, S15].
+\item \textbf{Leibniz's rule:} differentiating an integral with variable limits [S9]. \quad \textbf{Log contract:} pays $\log(S_T/S_0)$ [S21].
+\item \textbf{Model-free:} prices from market option quotes, no dynamics assumed [S10]. \quad \textbf{Static replication:} hedge set up once and held to expiry [S16].
+\item \textbf{Variance swap:} pays notional $\times(\sigma_R^2-\sigma_K^2)$ [S22]. \quad \textbf{VIX:} $100\times$ square root of 30-day model-free implied variance [S26].
+\end{itemize}
+
+\section{Self-test}
+\subsection*{Questions}
+\addcontentsline{toc}{subsection}{Questions}
+\begin{enumerate}[label=Q\arabic*.]
+\item ([S2--S7]) How do $\rho<0$ and a larger $\nu$ change the return distribution and OTM option prices?
+\item ([S9]) State Leibniz's rule.
+\item ([S14]) Derive $\partial C/\partial K$ and $\partial^2C/\partial K^2$ from $C(K)=e^{-rT}\int_K^\infty(s-K)f(s)\dd s$.
+\item ([S16--S19]) Derive the Carr--Madan formula. Where are put--call parity and $C(F)=P(F)$ used?
+\item ([S20]) Replicate $aS_T^b$. When are the options held short?
+\item ([S21]) Value the log contract under Black--Scholes and by static replication.
+\item ([S23]) Show $\int_0^T\sigma_t^2\dd t=2\int\dd S/S-2\log(S_T/S_0)$.
+\item ([S24--S25]) Derive the fair variance and explain the $1/K^2$ weights.
+\item ([S28--S29]) Value a digital call with $\bar K\ge F$ and build a finite replication.
+\end{enumerate}
+\subsection*{Solutions}
+\addcontentsline{toc}{subsection}{Solutions}
+\begin{enumerate}[label=S\arabic*.]
+\item $\rho<0$: fat left tail, OTM puts up, calls down (skew). $\nu\uparrow$: fatter tails both sides, OTM puts and calls up (curvature).
+\item See 1.3.
+\item $-e^{-rT}\int_K^\infty f\dd s$; $e^{-rT}f(K)$ (see 1.6).
+\item See 1.8--1.9: parity gives $-C'(F)+P'(F)=e^{-rT}$ and $C(F)=P(F)$ kills the $h'(F)$ term.
+\item See 1.10; short when $0<b<1$ (concave payoff).
+\item $e^{-rT}(r-\frac12\sigma^2)T$; $e^{-rT}rT-\int_0^F\frac{P}{K^2}-\int_F^\infty\frac{C}{K^2}$.
+\item It\^o on $\log S$: $\dd\log S=\dd S/S-\frac12\sigma^2\dd t$; rearrange and integrate.
+\item See 1.13; $1/K^2$ puts more weight on low strikes, so the price depends on the skew.
+\item $-\partial C(\bar K)/\partial K=e^{-rT}\Q^*(S_T>\bar K)$; long and short $1/\Delta K$ calls at $\bar K-\Delta K$ and $\bar K$.
+\end{enumerate}
+
+\section*{Appendix A. Slide coverage checklist}
+\addcontentsline{toc}{section}{Appendix A. Slide coverage checklist}
+{\small\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Slide & Content & Section\\\midrule
+S2--S7 & $\rho$ and $\nu$: distribution, pricing, smile & 1.1--1.2\\
+S8--S9 & Differentiation of integrals; Leibniz & 1.3\\
+S10--S13 & Model-free framework; implied density motivation & 1.4--1.5\\
+S14--S15 & Breeden--Litzenberger; Carr--Madan statement & 1.6\\
+S16--S19 & Static replication; by parts; Carr--Madan formula & 1.7--1.9\\
+S20--S21 & Examples: $aS_T^b$; log contract & 1.10--1.11\\
+S22--S25 & Variance swap contract and pricing & 1.12--1.13\\
+S26 & VIX & 1.14\\
+S27--S29 & Discontinuous payoffs; digital; call spread & 1.15--1.16\\\bottomrule
+\end{tabularx}}
+
+\section*{Appendix B. Flag summary (\flag)}
+\addcontentsline{toc}{section}{Appendix B. Flag summary}
+\begin{enumerate}
+\item {}[S5] ``Normal log-return distribution (if $\beta=0$)'' should read $\beta=1$.
+\item {}[S2] $\rho$ is said to be ``proportional'' to skewness; the relationship is monotone, not proportional.
+\item {}[S25] The final variance formula uses $\E$; it is the risk-neutral $\E^*$. The fair annualized strike divides by $T$ \beyond.
+\item {}[S8--S9] $F$ denotes an antiderivative there, but the forward $S_0e^{rT}$ from [S16] on.
+\item {}[S21] The log-contract question has no worked answer on the slides; it is answered here with my own working.
+\end{enumerate}
+\end{document}

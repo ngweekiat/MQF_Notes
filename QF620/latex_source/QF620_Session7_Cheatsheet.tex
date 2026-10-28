@@ -1,0 +1,388 @@
+\documentclass[10pt]{article}
+\newcommand{\sessnum}{7}
+\newcommand{\sesstitle}{Equivalent Martingale Measure}
+\usepackage{qf620style}
+\begin{document}
+\begin{center}
+{\LARGE\bfseries QF620 Stochastic Modelling in Finance --- Session 7\\[2pt] Reference Cheatsheet}\\[6pt]
+{\large Equivalent Martingale Measure: the Radon--Nikodym derivative, Girsanov's theorem, the road to Black--Scholes, numeraires and martingale pricing, the risk-neutral Black--Scholes derivation}\\[4pt]
+{\small Built from Session 7 slides (Tee Chyng Wen, SMU) $\cdot$ October 2026 $\cdot$ revised edition with intuition and full slide derivations}
+\end{center}
+\tableofcontents
+\vspace{4pt}
+\textbf{Source:} ``Session 7: Equivalent Martingale Measure'' (Tee Chyng Wen, SMU, 19 slides).
+
+\legend
+
+\textbf{What you must be able to do after this session:} derive the Radon--Nikodym derivative as a ratio of densities and use it to change the measure of an expectation; state Girsanov's theorem and use it to change the drift of an SDE; explain why the option price does not depend on $\mu$; say what a numeraire is and why discounted prices are martingales under the matching measure; reproduce the full EMM derivation of the Black--Scholes call.
+
+\section*{Notation used throughout (slide conventions)}
+\addcontentsline{toc}{section}{Notation used throughout (slide conventions)}
+{\small\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Symbol & Meaning & Notes\\\midrule
+$\Prob$ & real-world (physical) measure & [S4--S5]\\
+$\Q,\ \Q^*,\ \tilde\Prob$ & equivalent (martingale) measure; $\Q^*$ = risk-neutral with $B_t$ numeraire & [S5, S13, S17]\\
+$\E^\Prob,\ \E^\Q,\ \E^*_t$ & expectation under a measure; $\E^*_t$ risk-neutral, given time-$t$ info & [S4, S13]\\
+$\frac{\dd\Q}{\dd\Prob}$ & Radon--Nikodym derivative (likelihood ratio), $>0$ & [S3--S5]\\
+$f(x),\ \tilde f(x)$ & density with drift / without drift & [S2]\\
+$W_t$; $W^*_t$ & $\Prob$-Brownian motion; $\Q$-Brownian motion $W^*_t=W_t+\int_0^t\kappa_u\dd u$ & [S5, S17]\\
+$\kappa,\kappa_t$ & Girsanov kernel (drift shift); in Black--Scholes $\kappa=\frac{\mu-r}{\sigma}$ & [S5, S17]\\
+$S_t,\ B_t$ & stock; money-market account $B_t=B_0e^{rt}$ & [S12, S16]\\
+$X_t=S_t/B_t$ & relative (discounted) price & [S17]\\
+$\mu,r,\sigma$ & real-world drift, risk-free rate, volatility & [S12, S16]\\\bottomrule
+\end{tabularx}}
+
+\textbf{Notation trap:} on [S2--S4] $\Prob$ is the measure with drift $-\kappa$ and $\tilde\Prob$ the driftless one; on [S5] the roles flip: $\Prob$ is where $W_t$ is driftless and $\Q$ is the new one under which $W_t$ has drift $-\kappa$. Either way $\frac{\dd(\text{drift }-\kappa)}{\dd(\text{driftless})}=e^{-\kappa W_t-\frac12\kappa^2t}$. Here $\kappa$ is a market price of risk, not Heston's mean-reversion speed.
+
+\section*{0. Topic map}
+\addcontentsline{toc}{section}{0. Topic map}
+\begin{lstlisting}
+PREREQUISITES: S2 binomial Radon–Nikodym, martingales ; S3 BM, exponential martingale ; S4 Itô ; S5 BS formula
+    ▼
+SESSION 7
+├─ MEASURE CHANGE INTUITION [S2–S4]
+│     ├─ X_t ~ N(−κt, t): density f vs driftless density f̃                     [S2]
+│     ├─ likelihood ratio f/f̃ = exp(−κx − ½κ²t) = Radon–Nikodym derivative     [S3]
+│     └─ dP/dP̃ > 0, E_P̃[dP/dP̃] = 1, E_P[g] = E_P̃[g dP/dP̃] ; equivalent        [S4]
+├─ GIRSANOV [S5–S7]
+│     ├─ W*_t = W_t + ∫κ du is a Q-BM ; dQ/dP = exp(−∫κ dW − ½∫κ² dt)            [S5]
+│     ├─ E_P[W]=0, E_Q[W]=−κt, E_Q[W*]=0, E_P[W*]=κt                             [S6]
+│     └─ change drift μ → r with κ = (μ−r)/σ                                     [S7]
+├─ BLACK–SCHOLES HISTORY & ASSUMPTIONS [S8–S12]
+│     ├─ actuarial pricing needs μ and a risky discount rate ; BS hedges it away  [S8–S10]
+│     └─ Nobel 1997 ; dS = μS dt + σS dW, dB = rB dt ; seven assumptions         [S11–S12]
+├─ NUMERAIRE & EMM [S13–S15]
+│     ├─ S_t/e^{rt} = E*_t[S_{t+Δt}/e^{r(t+Δt)}] ; numeraire strictly positive    [S13]
+│     └─ complete ⇒ hedge ⇒ riskless ; equivalent measures agree on arbitrage    [S14–S15]
+└─ EMM APPLICATION: BLACK–SCHOLES [S16–S19]
+      ├─ μ is hardest to estimate                                                [S16]
+      ├─ X = S/B: dX = (μ−r)X dt + σX dW → Girsanov → dX = σX dW*               [S17]
+      ├─ dS = rS dt + σS dW* ; S_T = S₀exp((r−½σ²)T + σW*_T)                     [S18]
+      └─ V₀/B₀ = E*[V_T/B_T] ⇒ S₀Φ(d₁) − Ke^{−rT}Φ(d₁ − σ√T)                     [S19]
+\end{lstlisting}
+\textbf{The storyline of the session.}
+\begin{itemize}
+\item A change of measure is a \textbf{reweighting of outcomes} by a strictly positive density ratio. For a normal variable, reweighting by an exponential shifts the mean (Session 1's completing-the-square, again). Because the weight is never zero, the measures agree on what is impossible: they are \emph{equivalent}.
+\item \textbf{Girsanov} is that fact for whole Brownian paths: the right exponential weight turns $W$ into a Brownian motion with a shifted drift. Hence it can replace the drift of any It\^o SDE while leaving the volatility untouched.
+\item \textbf{Pricing}: hedging removes the stock's risk, so $\mu$ drops out. In measure language: choose the numeraire $B_t$, use Girsanov to make $S_t/B_t$ a martingale (this forces drift $r$), then price $=$ $\Q^*$-expectation of the discounted payoff. The integral is exactly Session 5's Black--Scholes derivation.
+\end{itemize}
+
+\section{Concept entries}
+
+\subsection{Intuition behind measure change [S2]}
+\begin{idea}
+Any expectation is an integral of $g$ against a density. Nothing stops us from multiplying and dividing by a \emph{different} density inside the integral: the value does not change, but now it reads as an expectation under the new density, of $g$ times a weight $f/\tilde f$. That weight is the whole idea of a change of measure.
+\end{idea}
+\[X_t\sim\N(-\kappa t,t),\qquad f(x)=\frac{1}{\sqrt{2\pi t}}\exp\Big[-\frac{(x+\kappa t)^2}{2t}\Big],\qquad \E[g(X_t)]=\int_{-\infty}^\infty g(x)f(x)\dd x.\]
+Introduce the driftless density $\tilde f(x)=\frac{1}{\sqrt{2\pi t}}e^{-\frac{x^2}{2t}}$ and multiply and divide:
+\[\E[g(X_t)]=\int_{-\infty}^\infty g(x)\frac{f(x)}{\tilde f(x)}\tilde f(x)\dd x.\]
+\begin{where}
+\w{$X_t$}{normal at time $t$: mean $-\kappa t$, variance $t$ (a BM with drift $-\kappa$).}
+\w{$\tilde f(x)$}{density of a driftless $\N(0,t)$: a standard BM at time $t$.}
+\w{$f/\tilde f$}{the weight that converts an average under $\tilde f$ into one under $f$.}
+\end{where}
+
+\subsection{Likelihood ratio = Radon--Nikodym derivative [S3]}
+\begin{deriv}[{Computing the ratio {[S3]} (the slide gives only the result)}]
+\vspace{-6pt}
+\begin{align*}
+\frac{f(x)}{\tilde f(x)}&=\frac{\exp\big[-\frac{(x+\kappa t)^2}{2t}\big]}{\exp\big[-\frac{x^2}{2t}\big]}=\exp\Big[-\frac{(x+\kappa t)^2-x^2}{2t}\Big] && \why{$\frac{1}{\sqrt{2\pi t}}$ cancels}\\
+&=\exp\Big[-\frac{2\kappa tx+\kappa^2t^2}{2t}\Big]=\exp\Big(-\kappa x-\tfrac12\kappa^2t\Big) && \why{expand $(x+\kappa t)^2$}
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$-\kappa x$}{from the cross term: tilts weight towards negative $x$ when $\kappa>0$.}
+\w{$-\frac12\kappa^2t$}{normaliser: makes the ratio average to 1 under $\tilde f$.}
+\end{where}
+\begin{itemize}
+\item This ratio is the \textbf{likelihood ratio}, or (in continuous time) the \textbf{Radon--Nikodym derivative} [S3].
+\item Discrete-time model: a ratio of two \emph{probabilities} (Session 2). Continuous-time model: a ratio of two probability \emph{density functions} [S3].
+\item Why ``derivative'': $\int g\dd\mu=\int g\frac{\dd\mu}{\dd\nu}\dd\nu$, a chain rule for measures [S3].
+\end{itemize}
+
+\subsection{Properties of the Radon--Nikodym derivative [S4]}
+\[\frac{\dd\Prob}{\dd\tilde\Prob}=\frac{f(x)}{\tilde f(x)}>0,\qquad \E^{\tilde\Prob}\Big[\frac{\dd\Prob}{\dd\tilde\Prob}\Big]=1,\qquad \E^\Prob[g(X_t)]=\E^{\tilde\Prob}\Big[g(X_t)\frac{\dd\Prob}{\dd\tilde\Prob}\Big].\]
+\begin{deriv}[{Why the expectation is 1 \beyond{} (two ways)}]
+Directly: $\E^{\tilde\Prob}[f/\tilde f]=\int\frac{f}{\tilde f}\tilde f\dd x=\int f\dd x=1$. Via the MGF: under $\tilde\Prob$, $X_t\sim\N(0,t)$, so $\E^{\tilde\Prob}[e^{-\kappa X_t-\frac12\kappa^2t}]=e^{\frac12\kappa^2t}e^{-\frac12\kappa^2t}=1$. It is the exponential martingale of Session 3.
+\end{deriv}
+\textbf{Slide question [S4]: why are $\Prob$ and $\tilde\Prob$ equivalent?} (answered here) Equivalent $=$ same null sets (agree on what is possible and impossible [S14]). Both normal densities are strictly positive on all of $\R$, so an event has probability zero under one iff under the other. Equivalently, $\frac{\dd\Prob}{\dd\tilde\Prob}$ is strictly positive and finite.
+
+\subsection{Girsanov's theorem [S5]}
+\begin{idea}
+Weighting each Brownian path by $e^{-\kappa W_T-\frac12\kappa^2T}$ favours paths that end low (for $\kappa>0$), so under the new measure $W$ drifts downward at rate $\kappa$. Equivalently, $W^*_t=W_t+\kappa t$ (undo that drift) is a perfectly standard Brownian motion under $\Q$. The volatility is unchanged: reweighting can only shift the centre, not the spread, because quadratic variation $\sum(\Delta W)^2\to t$ is path-wise and measure-free. That is the whole power: \textbf{Girsanov changes drifts, never volatilities}.
+\end{idea}
+\textbf{Constant-drift version.} With $\frac{\dd\Q}{\dd\Prob}=e^{-\kappa W_t-\frac12\kappa^2t}$, $W^*_t=W_t+\kappa t$ is a $\Q$-Brownian motion:
+\[\E^\Q[W^*_t]=0,\qquad \E^\Q\big[e^{\sigma W^*_t}\big]=e^{\frac12\sigma^2t},\qquad \E^\Q\big[e^{\sigma(W^*_{t+s}-W^*_s)}\mid\F_s\big]=e^{\frac12\sigma^2t}.\]
+\begin{deriv}[{Why $W^*_t$ is $\N(0,t)$ under $\Q$ \beyond{} (check the MGF by changing measure)}]
+\vspace{-6pt}
+\begin{align*}
+\E^\Q\big[e^{\sigma W^*_t}\big]&=\E^\Prob\Big[e^{\sigma(W_t+\kappa t)}\cdot e^{-\kappa W_t-\frac12\kappa^2t}\Big] && \why{$\E^\Q[Y]=\E^\Prob[Y\frac{\dd\Q}{\dd\Prob}]$}\\
+&=e^{\sigma\kappa t-\frac12\kappa^2t}\,\E^\Prob\big[e^{(\sigma-\kappa)W_t}\big] && \why{pull out constants}\\
+&=e^{\sigma\kappa t-\frac12\kappa^2t}\,e^{\frac12(\sigma-\kappa)^2t} && \why{MGF of $\N(0,t)$}\\
+&=e^{\sigma\kappa t-\frac12\kappa^2t+\frac12\sigma^2t-\sigma\kappa t+\frac12\kappa^2t}=e^{\frac12\sigma^2t} && \why{expand; terms cancel}
+\end{align*}
+$e^{\frac12\sigma^2t}$ is the MGF of $\N(0,t)$, so $W^*_t\sim\N(0,t)$ under $\Q$. The same computation on increments, conditional on $\F_s$, gives the third property (independent $\N(0,t)$ increments).
+\end{deriv}
+\textbf{Girsanov theorem (general) [S5].} If $W_t$ is a $\Prob$-BM and $\kappa_t$ satisfies $\E^\Prob\big[\exp\big(\frac12\int_0^T\kappa_t^2\dd t\big)\big]<\infty$ (Novikov), then there is a measure $\Q$ such that
+\[(1)\ \Q\sim\Prob;\qquad(2)\ \frac{\dd\Q}{\dd\Prob}=\exp\Big(-\int_0^T\kappa_t\dd W_t-\frac12\int_0^T\kappa_t^2\dd t\Big);\qquad(3)\ W^*_t=W_t+\int_0^t\kappa_u\dd u\text{ is a }\Q\text{-BM}.\]
+\begin{where}
+\w{$\kappa_t$}{drift shift (Girsanov kernel); may be random but must be adapted.}
+\w{Novikov}{guarantees the exponential has expectation 1, so $\Q$ is a genuine probability \beyond.}
+\w{$-\int\kappa\dd W$}{stochastic part (the ``$-\kappa x$'' of [S3]); $-\frac12\int\kappa^2\dd t$: normaliser.}
+\w{$W^*_t$}{zero drift under $\Q$; equivalently $\dd W_t=\dd W^*_t-\kappa_t\dd t$.}
+\end{where}
+\begin{exam}
+\textbf{Recipe.} Write $\dd X=a\dd t+b\dd W$. For target drift $\tilde a$: $\dd X=\tilde a\dd t+b(\dd W+\kappa\dd t)$ with $\kappa=\frac{a-\tilde a}{b}$; set $\dd W^*=\dd W+\kappa\dd t$. Only the drift changes; $b$ is untouched. Sign check: $\dd W^*=\dd W+\kappa\dd t$ goes with $\frac{\dd\Q}{\dd\Prob}=e^{-\int\kappa\dd W-\frac12\int\kappa^2\dd t}$ (minus sign).
+\end{exam}
+
+\subsection{Girsanov example 1: four expectations [S6]}
+\begin{deriv}[{Worked answers (the slide only poses them); $W^*_t=W_t+\kappa t$}]
+\vspace{-6pt}
+\begin{align*}
+\E^\Prob[W_t]&=0 && \why{$W$ is a $\Prob$-BM}\\
+\E^\Q[W_t]&=\E^\Q[W^*_t-\kappa t]=0-\kappa t=-\kappa t && \why{$W^*$ is a $\Q$-BM}\\
+\E^\Q[W^*_t]&=0 && \why{$W^*$ is a $\Q$-BM}\\
+\E^\Prob[W^*_t]&=\E^\Prob[W_t+\kappa t]=\kappa t && \why{$W$ is a $\Prob$-BM}
+\end{align*}
+Check of the second line via the density: $\E^\Prob\big[W_te^{-\kappa W_t-\frac12\kappa^2t}\big]=e^{-\frac12\kappa^2t}\frac{\dd}{\dd\theta}e^{\frac12\theta^2t}\big|_{\theta=-\kappa}=e^{-\frac12\kappa^2t}(-\kappa t)e^{\frac12\kappa^2t}=-\kappa t$ \checkmark. Rule: each process is driftless only under its own measure.
+\end{deriv}
+
+\subsection{Girsanov example 2: change $\mu$ to $r$ [S7]}
+\begin{deriv}[{{[S7]} step by step}]
+\vspace{-6pt}
+\begin{align*}
+\dd X_t&=\mu X_t\dd t+\sigma X_t\dd W_t && \why{under $\Prob$}\\
+&=rX_t\dd t+(\mu-r)X_t\dd t+\sigma X_t\dd W_t && \why{add and subtract $rX_t\dd t$}\\
+&=rX_t\dd t+\sigma X_t\Big(\dd W_t+\frac{\mu-r}{\sigma}\dd t\Big) && \why{factor out $\sigma X_t$}\\
+&=rX_t\dd t+\sigma X_t\dd W^*_t,\qquad W^*_t=W_t+\frac{\mu-r}{\sigma}t && \why{Girsanov, $\kappa=\frac{\mu-r}{\sigma}$}
+\end{align*}
+$W^*$ is a $\Q$-BM with $\frac{\dd\Q}{\dd\Prob}=e^{-\kappa W_T-\frac12\kappa^2T}$.
+\end{deriv}
+\begin{where}
+\w{$\kappa=\frac{\mu-r}{\sigma}$}{Girsanov kernel; in finance the market price of risk (Sharpe ratio) \beyond.}
+\end{where}
+
+\subsection{Before Black--Scholes: actuarial pricing [S8, S10]}
+\begin{idea}
+Before 1973, an option was valued like an insurance contract: forecast the stock's growth $\mu$, compute the expected payoff, discount at a rate $f$ that reflects the option's risk. Both $\mu$ and $f$ are personal guesses. Black--Scholes showed that if you hedge, both disappear and are replaced by the one rate everyone agrees on, $r$.
+\end{idea}
+Pre-1973 models valued an option as the \emph{empirical} expected discounted payoff; it depended on volatility but also on which growth rate and which risky discount rate to use: ``it was personal'' [S8, Derman].
+\[\text{Call}=S_0\Phi\bigg(\frac{\log\frac{S_0}{K}+(\mu+\frac{\sigma^2}{2})T}{\sigma\sqrt T}\bigg)-Ke^{-fT}\Phi\bigg(\frac{\log\frac{S_0}{K}+(\mu-\frac{\sigma^2}{2})T}{\sigma\sqrt T}\bigg)\quad\text{[S10]}.\]
+\begin{where}
+\w{$\mu$}{the stock's expected return (unknown, must be forecast).}
+\w{$f$}{the discount rate chosen for the option's risk (``personal'').}
+\end{where}
+\begin{exam}
+\flag{} The slide formula drops a factor on the first term. Discounting $\E^\Prob[(S_T-K)^+]$ at rate $f$ when $S$ grows at $\mu$ gives $S_0e^{(\mu-f)T}\Phi(d^\mu_1)-Ke^{-fT}\Phi(d^\mu_2)$; the slide version is exact only when $f=\mu$. With $\mu=f=r$ it becomes Black--Scholes.
+\end{exam}
+
+\subsection{Black--Scholes (1971--73) and the Nobel Prize [S9--S11]}
+\[\text{Call}=S_0\Phi\bigg(\frac{\log\frac{S_0}{K}+(r+\frac{\sigma^2}{2})T}{\sigma\sqrt T}\bigg)-Ke^{-rT}\Phi\bigg(\frac{\log\frac{S_0}{K}+(r-\frac{\sigma^2}{2})T}{\sigma\sqrt T}\bigg).\]
+\begin{itemize}
+\item Hedge to eliminate stock risk from the option. The hedged portfolio is riskless, so it must earn the riskless rate. Same formula shape as the actuarial one, but all growth and discount rates are $r$ [S9].
+\item The value does not depend on the stock's expected return (hedged away); it depends on $r$ (known) and future volatility $\sigma$ [S9].
+\item 1997 Nobel Prize to Merton and Scholes (Black died in 1995) [S11].
+\end{itemize}
+
+\subsection{Black--Scholes market and assumptions [S12]}
+\[\begin{cases}\dd S_t=\mu S_t\dd t+\sigma S_t\dd W_t & \text{risky asset (stock)}\\ \dd B_t=rB_t\dd t & \text{risk-free asset, }B_t=B_0e^{rt}\end{cases}\]
+Assumptions: (1) underlying lognormal with constant mean and variance; (2) $r$ constant; (3) no dividends during the option's life; (4) short selling permitted; (5) no risk-free arbitrage; (6) continuous-time trading; (7) no transaction costs, taxes or trading limits.
+
+\subsection{Choice of numeraire [S13]}
+\begin{idea}
+A numeraire is the \emph{unit} we measure prices in. ``The stock grows at $r$ on average under $\Q^*$'' is the same statement as ``the stock measured in units of the bank account has no drift'', i.e.\ is a martingale. Any strictly positive asset can be the unit; each choice comes with its own martingale measure. The bank account is the classical choice.
+\end{idea}
+\begin{deriv}[{From risk-neutral growth to a martingale {[S13]}}]
+$\E^*_t[S_{t+\Delta t}]=S_te^{r\Delta t}$. Divide both sides by $e^{r(t+\Delta t)}$ (a constant): $\E^*_t\Big[\frac{S_{t+\Delta t}}{e^{r(t+\Delta t)}}\Big]=\frac{S_te^{r\Delta t}}{e^{r(t+\Delta t)}}=\frac{S_t}{e^{rt}}$. (Same as Session 2's $S_n/(1+r)^n$.)
+\end{deriv}
+\begin{itemize}
+\item The security in the denominator is the \textbf{numeraire}; the only requirement is that it is strictly positive at all times [S13].
+\item The money-market account is the popular choice (Harrison--Kreps 1979), but the choice is arbitrary [S13, S15]. \beyond{} Each numeraire $N_t$ has its own measure $\Q^N$ with $\frac{V_t}{N_t}=\E^N_t\big[\frac{V_T}{N_T}\big]$ (e.g.\ the zero-coupon bond gives the $T$-forward measure).
+\end{itemize}
+
+\subsection{Equivalent martingale measure: key concepts [S14--S15]}
+\begin{idea}
+Chain of logic: complete market $\Rightarrow$ every derivative can be hedged $\Rightarrow$ the hedged position is riskless $\Rightarrow$ it grows at $r$ $\Rightarrow$ divided by the bank account it is a martingale. Real-world probabilities never entered. And since an arbitrage is defined only through which outcomes are possible, any price that is arbitrage-free under $\Q^*$ is arbitrage-free under the equivalent real-world $\Prob$.
+\end{idea}
+\begin{itemize}
+\item In a complete market every derivative is attainable; a perfectly hedged derivative loses its randomness and behaves like a riskless bond [S14].
+\item Real-world probabilities do not enter risk-neutral valuation; the hedged portfolio grows at $r$, so (hedged portfolio)$/B_t$ is a martingale [S14].
+\item Equivalent measures agree on what is possible; so an arbitrage in one measure is an arbitrage in every equivalent measure [S14--S15]. If the risk-neutral price is arbitrage-free, it is arbitrage-free in the real world [S15].
+\item If prices divided by a numeraire are martingales, there is no arbitrage; under the associated measure the discounted option price is also a martingale, giving its present value [S15]. \beyond: First Fundamental Theorem; uniqueness of the EMM $\iff$ completeness is the Second.
+\end{itemize}
+
+\subsection{EMM application: which parameter is hardest? [S16]}
+\textbf{Slide question} (answered here): $\mu$. $r$ is observed in the market; $\sigma$ can be estimated well from high-frequency data (or implied from options). The standard error of an estimated mean return is $\sigma/\sqrt{T_{\text{years}}}$, which depends only on the length of the history, so even decades of data leave $\mu$ very uncertain (e.g.\ $\sigma=20\%$, 25 years: s.e.\ $4\%$). EMM pricing removes $\mu$ entirely.
+
+\subsection{Relative price and the martingale measure [S17]}
+\begin{idea}
+To find the pricing measure, look at the stock in units of the bank account, $X=S/B$. Under $\Prob$ it drifts at the excess return $\mu-r$. Girsanov with $\kappa=\frac{\mu-r}{\sigma}$ (the market price of risk) removes exactly that drift, so $X$ becomes a $\Q^*$-martingale. With one stock and one Brownian motion this $\kappa$ is forced, so the EMM is unique: the market is complete.
+\end{idea}
+\begin{deriv}[{It\^o on $X_t=f(S_t,B_t)=S_t/B_t$ (working not on the slide)}]
+$f_S=\frac1B$, $f_B=-\frac{S}{B^2}$, $f_{SS}=0$, and $\dd B$ has no $\dd W$ (so $(\dd B)^2=\dd S\dd B=0$):
+\vspace{-4pt}
+\begin{align*}
+\dd X_t&=\frac{1}{B_t}\dd S_t-\frac{S_t}{B_t^2}\dd B_t && \why{It\^o; no second-order terms}\\
+&=\frac{\mu S_t\dd t+\sigma S_t\dd W_t}{B_t}-\frac{S_t}{B_t^2}rB_t\dd t=(\mu-r)X_t\dd t+\sigma X_t\dd W_t && \why{substitute $\dd S,\dd B$}\\
+\dd W_t&=\dd W^*_t-\frac{\mu-r}{\sigma}\dd t && \why{Girsanov, $\kappa=\frac{\mu-r}{\sigma}$}\\
+\dd X_t&=(\mu-r)X_t\dd t+\sigma X_t\Big(\dd W^*_t-\frac{\mu-r}{\sigma}\dd t\Big)=\sigma X_t\dd W^*_t && \why{drift cancels}
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$(\mu-r)X_t$}{real-world drift of the discounted price: the excess return.}
+\w{$W^*_t$}{$\Q^*$-BM; ``$*$'' signals the numeraire is $B_t$.}
+\w{$\sigma X_t\dd W^*_t$}{no drift: $X_t$ is a $\Q^*$-martingale.}
+\end{where}
+
+\subsection{Stock under $\Q^*$ [S18]}
+\begin{deriv}[{Substituting the Girsanov shift into the stock SDE {[S18]}}]
+\vspace{-6pt}
+\begin{align*}
+\dd S_t&=\mu S_t\dd t+\sigma S_t\Big(\dd W^*_t-\frac{\mu-r}{\sigma}\dd t\Big)=rS_t\dd t+\sigma S_t\dd W^*_t && \why{$\mu$ replaced by $r$}\\
+S_T&=S_0\exp\Big[\Big(r-\tfrac12\sigma^2\Big)T+\sigma W^*_T\Big] && \why{GBM solution, Session 5}
+\end{align*}
+\end{deriv}
+This is the only measure that turns the relative price into a martingale [S18]. Under it, $\mu$ is irrelevant; $W^*_T\sim\N(0,T)$, write $W^*_T=\sqrt Tx$.
+
+\subsection{Martingale pricing of a European call [S19]}
+\begin{deriv}[{{[S19]} with the steps filled in from Session 5}]
+\vspace{-6pt}
+\begin{align*}
+\frac{V_0}{B_0}&=\E^*\Big[\frac{V_T}{B_T}\Big]=\E^*\Big[\frac{(S_T-K)^+}{B_T}\Big] && \why{$V/B$ is a $\Q^*$-martingale}\\
+V_0&=e^{-rT}\E^*[(S_T-K)^+] && \why{$B_0=1$, $B_T=e^{rT}$ deterministic}\\
+&=\frac{e^{-rT}}{\sqrt{2\pi}}\int_{-\infty}^\infty\Big[S_0e^{(r-\frac12\sigma^2)T+\sigma\sqrt Tx}-K\Big]^+e^{-\frac{x^2}{2}}\dd x && \why{$W^*_T=\sqrt Tx$}\\
+&=S_0\Phi(d_1)-Ke^{-rT}\Phi(d_1-\sigma\sqrt T),\qquad d_1=\frac{\log\frac{S_0}{K}+(r+\frac12\sigma^2)T}{\sigma\sqrt T}
+\end{align*}
+The last step is Session 5 [S12--S14]: the integrand is positive for $x>-d_2$; split there; the strike term gives $Ke^{-rT}\Phi(d_2)$; the stock term, after completing the square $(x-\sigma\sqrt T)^2$, gives $S_0\Phi(d_1)$.
+\end{deriv}
+\begin{exam}
+Exam template for ``price by martingale methods'': (1) write $\Prob$-dynamics; (2) form $S/B$ and apply It\^o; (3) Girsanov to kill the drift, giving $\kappa$; (4) rewrite $\dd S$ under $\Q^*$ and solve; (5) $V_0=B_0\E^*[V_T/B_T]$ and evaluate the integral.
+\end{exam}
+
+\subsection{Implementation \beyond{} (tested)}
+\begin{lstlisting}[language=Python]
+import numpy as np
+from scipy.stats import norm
+rng = np.random.default_rng(0)
+def bs_call(S0, K, r, sigma, T):
+    d1 = (np.log(S0/K) + (r + 0.5*sigma**2)*T) / (sigma*np.sqrt(T))
+    return S0*norm.cdf(d1) - K*np.exp(-r*T)*norm.cdf(d1 - sigma*np.sqrt(T))
+# 1) Girsanov: reweight P-paths by dQ/dP = exp(-kappa W_t - kappa^2 t/2)
+kappa, t, n = 0.5, 2.0, 2_000_000
+W = np.sqrt(t)*rng.standard_normal(n)           # P-Brownian motion at t
+Z = np.exp(-kappa*W - 0.5*kappa**2*t)           # Radon-Nikodym derivative
+print(round(Z.mean(), 3))                       # 0.999  ~ E_P[dQ/dP] = 1
+print(round((W*Z).mean(), 3))                   # -0.998 ~ E_Q[W_t] = -kappa t = -1
+print(round(((W + kappa*t)*Z).mean(), 3))       # 0.002  ~ E_Q[W*_t] = 0
+# 2) Martingale pricing: simulate S_T under Q*, discount by B_T (mu never used)
+S0, K, r, mu, sigma, T = 100, 105, 0.05, 0.12, 0.2, 1.0
+Ws = np.sqrt(T)*rng.standard_normal(n)
+ST = S0*np.exp((r - 0.5*sigma**2)*T + sigma*Ws)
+print(round(np.exp(-r*T)*np.maximum(ST - K, 0).mean(), 3),
+      round(bs_call(S0, K, r, sigma, T), 3))    # 8.006 (MC)  8.021 (closed form)
+print(round(np.exp(-r*T)*ST.mean(), 3))         # 99.975 ~ S_0: S/B is a Q*-martingale
+\end{lstlisting}
+
+\section{Comparison tables}
+\subsection{Real-world vs risk-neutral}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Real world $\Prob$ [S12, S16] & Risk-neutral $\Q^*$ [S17--S18]\\\midrule
+Stock drift & $\mu$ (unknown) & $r$\\
+Brownian motion & $W_t$ & $W^*_t=W_t+\frac{\mu-r}{\sigma}t$\\
+Volatility & $\sigma$ & $\sigma$ (unchanged by Girsanov)\\
+$S_t/B_t$ & drift $(\mu-r)$: not a martingale & martingale\\
+Use & forecasting, risk management & pricing derivatives\\
+Discount rate for options & unknown, risk-dependent & $r$\\\bottomrule
+\end{tabularx}}
+\subsection{Discrete vs continuous measure change}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Discrete (binomial, Session 2) & Continuous (Brownian)\\\midrule
+Radon--Nikodym & ratio of probabilities, e.g.\ $q/p$, $(1-q)/(1-p)$ & ratio of densities $f/\tilde f$\\
+Form & product of node ratios along a path & $e^{-\kappa W_T-\frac12\kappa^2T}$\\
+Equivalence & $0<p,q<1$ & density ratio $>0$\\
+Effect & changes up/down probabilities & changes the drift only\\\bottomrule
+\end{tabularx}}
+\subsection{Actuarial vs Black--Scholes pricing}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Actuarial (pre-1973) & Black--Scholes\\\midrule
+Growth rate of $S$ & $\mu$ (forecast) & $r$\\
+Discount rate & $f$ (risk-adjusted, personal) & $r$\\
+Inputs & $S_0,K,T,\sigma,\mu,f$ & $S_0,K,T,\sigma,r$\\
+Justification & expected value & hedging / no arbitrage\\\bottomrule
+\end{tabularx}}
+
+\section{Master formula sheet}
+\begin{itemize}
+\item \textbf{Radon--Nikodym [S3--S4]:} $\frac{\dd\Prob}{\dd\tilde\Prob}=\frac{f}{\tilde f}=e^{-\kappa x-\frac12\kappa^2t}>0$; $\E^{\tilde\Prob}[\frac{\dd\Prob}{\dd\tilde\Prob}]=1$; $\E^\Prob[g]=\E^{\tilde\Prob}[g\frac{\dd\Prob}{\dd\tilde\Prob}]$.
+\item \textbf{Girsanov [S5]:} $\frac{\dd\Q}{\dd\Prob}=\exp(-\int_0^T\kappa_t\dd W_t-\frac12\int_0^T\kappa_t^2\dd t)$; $W^*_t=W_t+\int_0^t\kappa_u\dd u$ is a $\Q$-BM.
+\item \textbf{Drift change:} $\dd X=a\dd t+b\dd W\to\tilde a\dd t+b\dd W^*$ with $\kappa=(a-\tilde a)/b$.
+\item \textbf{BS under the EMM [S17--S19]:} $\kappa=\frac{\mu-r}{\sigma}$; $\dd(S/B)=\sigma(S/B)\dd W^*$; $\dd S=rS\dd t+\sigma S\dd W^*$; $S_T=S_0e^{(r-\frac12\sigma^2)T+\sigma W^*_T}$; $\frac{V_0}{B_0}=\E^*[\frac{V_T}{B_T}]$; call $=S_0\Phi(d_1)-Ke^{-rT}\Phi(d_2)$.
+\item \textbf{Numeraire [S13]:} $\frac{S_t}{e^{rt}}=\E^*_t\big[\frac{S_{t+\Delta t}}{e^{r(t+\Delta t)}}\big]$; numeraire strictly positive.
+\end{itemize}
+
+\section{Glossary}
+\begin{itemize}
+\item \textbf{Complete market:} every derivative can be replicated [S14]. \quad \textbf{Equivalent measures:} agree on which events have probability zero [S14].
+\item \textbf{Equivalent martingale measure (EMM):} equivalent measure under which prices divided by the numeraire are martingales [S14--S15].
+\item \textbf{Girsanov's theorem:} exponential change of measure that shifts the drift of a BM [S5].
+\item \textbf{Likelihood ratio / Radon--Nikodym derivative:} $\frac{\dd\Q}{\dd\Prob}$, the reweighting factor [S3].
+\item \textbf{Market price of risk:} $\kappa=(\mu-r)/\sigma$ \beyond. \quad \textbf{Martingale pricing theorem:} $V_0/N_0=\E^N[V_T/N_T]$ [S19].
+\item \textbf{Novikov condition:} $\E[e^{\frac12\int_0^T\kappa_t^2\dd t}]<\infty$ [S5]. \quad \textbf{Numeraire:} strictly positive asset used as the unit of account [S13].
+\end{itemize}
+
+\section{Self-test}
+\subsection*{Questions}
+\addcontentsline{toc}{subsection}{Questions}
+\begin{enumerate}[label=Q\arabic*.]
+\item ([S2--S3]) Derive the likelihood ratio between $\N(-\kappa t,t)$ and $\N(0,t)$.
+\item ([S4]) State three properties of the Radon--Nikodym derivative. Why are the two measures equivalent?
+\item ([S5]) State Girsanov's theorem.
+\item ([S6]) With $W^*_t=W_t+\kappa t$, compute $\E^\Prob[W_t]$, $\E^\Q[W_t]$, $\E^\Q[W^*_t]$, $\E^\Prob[W^*_t]$.
+\item ([S7]) Change the measure so that $\dd X=\mu X\dd t+\sigma X\dd W$ has drift $r$. What is $\frac{\dd\Q}{\dd\Prob}$?
+\item ([S8--S10]) Why does the Black--Scholes price not depend on $\mu$?
+\item ([S13]) What is a numeraire and what is the only requirement?
+\item ([S14--S15]) Why is a price that is arbitrage-free under $\Q^*$ also arbitrage-free under $\Prob$?
+\item ([S17]) Derive $\dd(S/B)$ and find the measure that makes it a martingale.
+\item ([S18--S19]) Derive the Black--Scholes call price by martingale pricing.
+\end{enumerate}
+\subsection*{Solutions}
+\addcontentsline{toc}{subsection}{Solutions}
+\begin{enumerate}[label=S\arabic*.]
+\item $\exp[-\frac{(x+\kappa t)^2-x^2}{2t}]=e^{-\kappa x-\frac12\kappa^2t}$.
+\item Strictly positive; expectation 1 under $\tilde\Prob$; $\E^\Prob[g]=\E^{\tilde\Prob}[g\,\dd\Prob/\dd\tilde\Prob]$. Both densities are positive everywhere, so they share null sets.
+\item See 1.4.
+\item $0,\ -\kappa t,\ 0,\ \kappa t$.
+\item $\kappa=\frac{\mu-r}{\sigma}$, $W^*=W+\kappa t$, $\frac{\dd\Q}{\dd\Prob}=e^{-\kappa W_T-\frac12\kappa^2T}$; $\dd X=rX\dd t+\sigma X\dd W^*$.
+\item Stock risk is hedged away; the hedged portfolio is riskless and earns $r$. Formally, Girsanov changes only the drift, and pricing under $\Q^*$ uses drift $r$.
+\item The unit in which prices are expressed; it must be strictly positive at all times.
+\item Equivalent measures agree on which events are possible, and an arbitrage is defined only through possible/impossible events ($V_0\le0$, $V_T\ge0$ a.s., $\Prob(V_T>0)>0$).
+\item $\dd X=(\mu-r)X\dd t+\sigma X\dd W$; Girsanov with $\kappa=\frac{\mu-r}{\sigma}$ gives $\dd X=\sigma X\dd W^*$.
+\item See 1.15.
+\end{enumerate}
+
+\section*{Appendix A. Slide coverage checklist}
+\addcontentsline{toc}{section}{Appendix A. Slide coverage checklist}
+{\small\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Slide & Content & Section\\\midrule
+S2--S4 & Densities; likelihood ratio; properties; equivalence & 1.1--1.3\\
+S5 & Girsanov theorem & 1.4\\
+S6--S7 & Examples: four expectations; change drift $\mu\to r$ & 1.5--1.6\\
+S8--S11 & Derman history; actuarial vs BS; Nobel & 1.7--1.8\\
+S12 & BS market and assumptions & 1.9\\
+S13 & Choice of numeraire & 1.10\\
+S14--S15 & EMM key concepts & 1.11\\
+S16 & Which parameter is hardest & 1.12\\
+S17--S18 & Relative price; Girsanov; stock under $\Q^*$ & 1.13--1.14\\
+S19 & Martingale pricing of the call & 1.15\\\bottomrule
+\end{tabularx}}
+
+\section*{Appendix B. Flag summary (\flag)}
+\addcontentsline{toc}{section}{Appendix B. Flag summary}
+\begin{enumerate}
+\item {}[S2--S5] The roles of the measures flip between [S2--S4] and [S5]; the density formula is the same once you track which is which.
+\item {}[S10] The ``before Black--Scholes'' formula omits $e^{(\mu-f)T}$ on the $S_0$ term; exact only when $f=\mu$.
+\item {}[S5] ``$\mid s$'' means conditioning on the information $\F_s$.
+\item {}[S4, S6, S16] Questions posed on the slides are answered here with my own working.
+\end{enumerate}
+\end{document}

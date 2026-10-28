@@ -1,0 +1,547 @@
+\documentclass[10pt]{article}
+\newcommand{\sessnum}{1}
+\newcommand{\sesstitle}{Probability Theory and Lattice Models}
+\usepackage{qf620style}
+\begin{document}
+\begin{center}
+{\LARGE\bfseries QF620 Stochastic Modelling in Finance --- Session 1\\[2pt] Reference Cheatsheet}\\[6pt]
+{\large Probability Theory and Lattice Models: expectation, moments and central moments, skewness and kurtosis, moment generating functions, normal and lognormal variables, two-state and three-state models}\\[4pt]
+{\small Built from Session 1 slides (Tee Chyng Wen, SMU) $\cdot$ October 2026 $\cdot$ revised edition with intuition and full slide derivations}
+\end{center}
+\tableofcontents
+\vspace{4pt}
+\textbf{Source:} ``Session 1: Probability Theory and Lattice Models'' (Tee Chyng Wen, SMU, 22 slides).
+
+\legend
+
+\textbf{What you must be able to do after this session:} use expectation and variance rules; move between raw and central moments; interpret skewness and (excess) kurtosis; get moments from an MGF; \emph{derive} the normal MGF by completing the square; get the lognormal mean from the MGF; price an option in the two-state model both by hedging and by risk-neutral probabilities; explain why the three-state model only gives a price interval.
+
+\section*{Notation used throughout (slide conventions)}
+\addcontentsline{toc}{section}{Notation used throughout (slide conventions)}
+{\small\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\linewidth}{@{}l X l l@{}}\toprule
+Symbol & Meaning & Type & Notes\\\midrule
+$X$ & random variable & random & \\
+$f(x)$ & probability density function (PDF) & function & $\int f=1$, $f\ge 0$ [S2]\\
+$F(x)$ & cumulative distribution function (CDF) & function & $F(x)=\Prob(X\le x)$ [S4]\\
+$\E[\cdot]$ & expectation & number & [S2]\\
+$V[\cdot]$ & variance & number & [S3]\\
+$\mu,\ \sigma^2,\ \sigma$ & mean; variance; standard deviation & number & [S3]\\
+$\E[X^k]$ & $k$-th (raw) moment, about the origin & number & [S6]\\
+$\nu_k$ & $k$-th central moment $\E[(X-\mu)^k]$ & number & about the mean [S7]\\
+$\gamma_k$ & standardised moment $\nu_k/\sigma^k$ & number & $\gamma_3$ skewness, $\gamma_4$ kurtosis [S9]\\
+$M_X(\theta)$ & moment generating function $\E[e^{\theta X}]$ & function & [S10]\\
+$\N(\mu,\sigma^2)$, $Z$ & normal distribution; standard normal $\N(0,1)$ & distribution & [S11--S13]\\
+$\phi(x)$ & standard normal PDF & function & [S11]\\
+$Y=e^X$ & lognormal variable & random & [S14]\\
+$S_0,S_1$; $C_0,C_1$ & stock / call value today and tomorrow & price & [S15]\\
+$K$ & strike & price & \\
+$\Delta$ & shares held per option sold (hedge ratio) & number & [S16]\\
+$p,\ p^*$ & real-world / risk-neutral up probability & probability & [S18--S19]\\\bottomrule
+\end{tabularx}}
+
+\textbf{Notation trap:} the slides write the kurtosis numerator once as $v_4$ (a typo for $\nu_4$) [S9]. Here $\sigma$ is the standard deviation of $X$; from Session 2 on it is a volatility \emph{per unit time}.
+
+\section*{0. Topic map}
+\addcontentsline{toc}{section}{0. Topic map}
+\begin{lstlisting}
+PREREQUISITES: integration, Taylor series of e^x, completing the square, ∫e^{-y²}dy = √π
+    │
+    ▼
+SESSION 1
+├─ DISTRIBUTIONS [S2–S5]
+│     ├─ E[g(X)] = ∫ g(x) f(x) dx ; linearity ; E[XY] ≠ E[X]E[Y] in general   [S2]
+│     ├─ μ = E[X] ; V[X] = E[(X−μ)²] ; V[aX+b] = a²V[X]                        [S3]
+│     └─ mode, median F(M)=½, quartiles, percentiles ; temperature example      [S4–S5]
+├─ MOMENTS & MGF [S6–S10]
+│     ├─ raw moments E[X^k] ; V[X] = E[X²] − μ²                                 [S6]
+│     ├─ central moments ν_k ; ν₁ = 0, ν₂ = σ² ; ν₃ in raw moments             [S7–S8]
+│     ├─ γ_k = ν_k/σ^k ; skewness γ₃ ; kurtosis γ₄ (= 3 for normal)            [S9]
+│     └─ M_X(θ) = E[e^{θX}] ; E[X^n] = M^{(n)}(0)                               [S10]
+├─ NORMAL & LOGNORMAL [S11–S14]
+│     ├─ Gaussian integral √π ⇒ normal PDF integrates to 1                     [S11]
+│     ├─ M_X(θ) = exp(μθ + ½σ²θ²) by completing the square                     [S12–S13]
+│     └─ Y = e^X lognormal ; E[Y] = M_X(1) = e^{μ+½σ²}                         [S14]
+├─ TWO-STATE MODEL [S15–S19]
+│     ├─ 100 → 110/90, ATM call 10/0 ; hedge Δ = ½ ⇒ C₀ = 5                    [S15–S16]
+│     ├─ probabilities only fix which states are possible                      [S17]
+│     └─ risk-neutral p* = ½ reproduces C₀ = 5 ; hedging removes risk premium  [S18–S19]
+└─ THREE-STATE MODEL [S20–S22]
+      ├─ cannot hedge 3 states with 1 Δ ⇒ only bounds 0 < C₀ < 5               [S20–S21]
+      └─ p* ∈ (0, ½) ⇒ interval of prices : incomplete market                  [S22]
+    ▼
+LATER: S2 multi-period binomial, Radon–Nikodym ; S3 Brownian motion
+\end{lstlisting}
+\textbf{The storyline of the session.}
+\begin{itemize}
+\item \textbf{Part 1 (S2--S14) builds the toolkit.} Everything is an expectation: the mean is $\E[X]$, the variance is $\E[(X-\mu)^2]$, the MGF is $\E[e^{\theta X}]$. The MGF is the star because one closed-form function gives every moment, and for the normal it gives $\E[e^X]=e^{\mu+\frac12\sigma^2}$, the formula behind every lognormal stock-price calculation in the course (the $r-\tfrac12\sigma^2$ in Black--Scholes is this convexity term).
+\item \textbf{Part 2 (S15--S22) is the first pricing argument.} A hedge, not a forecast, fixes the option price. The ``risk-neutral probability'' is just the set of weights that reproduces the hedge price as an expectation. With two states and two instruments (stock, cash) the hedge is perfect and the price is unique; with three states it fails and only an interval survives (incomplete market).
+\end{itemize}
+
+\section{Concept entries}
+
+\subsection{Expectation and its properties [S2]}
+\begin{idea}
+A random variable is fully described by its PDF $f(x)$: $f(x)\dd x$ is the probability that $X$ lands in a tiny interval around $x$. The \emph{expectation} of any function $g(X)$ is the probability-weighted average of $g$ over all outcomes: weight each possible value $g(x)$ by how likely it is, and add up. Every quantity in this session (mean, variance, moments, MGF, option price) is an expectation of some particular $g$; only the choice of $g$ changes. Option pricing later is exactly this with $g=$ payoff and $f=$ risk-neutral density.
+\end{idea}
+\[\E[g(X)]=\int_{-\infty}^{\infty}g(x)\,f(x)\dd x.\]
+\begin{where}
+\w{$X$}{a continuous random variable.}
+\w{$g(X)$}{any function of $X$ (e.g.\ $X$, $X^2$, $e^{\theta X}$, an option payoff $(X-K)^+$).}
+\w{$f(x)$}{PDF of $X$: $f(x)\dd x\approx\Prob(x<X\le x+\dd x)$; $f\ge0$, $\int f=1$.}
+\w{$\int\ldots\dd x$}{weighted average over every possible value $x$. For discrete $X$: $\sum_x g(x)\Prob(X=x)$.}
+\end{where}
+\textbf{Properties [S2]:}
+\[\E[a]=a,\qquad \E[a\,g(X)]=a\,\E[g(X)],\qquad \E[s(X)+t(X)]=\E[s(X)]+\E[t(X)],\qquad \E[XY]\neq\E[X]\E[Y]\text{ in general.}\]
+\begin{where}
+\w{$a$}{a constant (non-random).}
+\w{$s(X),t(X)$}{two functions of $X$; expectation is \textbf{linear}.}
+\w{$\E[XY]=\E[X]\E[Y]$}{holds when $X,Y$ are independent (more generally uncorrelated); in general $\E[XY]=\E[X]\E[Y]+\mathrm{Cov}(X,Y)$ \beyond.}
+\end{where}
+\begin{deriv}[{Why the properties hold (one line each, from the integral)}]
+\vspace{-6pt}
+\begin{align*}
+\E[a]&=\int a f(x)\dd x=a\int f(x)\dd x=a && \why{total probability $=1$}\\
+\E[a g(X)]&=\int a g(x) f(x)\dd x=a\int g(x)f(x)\dd x && \why{constant comes out of an integral}\\
+\E[s+t]&=\int (s+t)f\dd x=\int sf\dd x+\int tf\dd x && \why{integral of a sum = sum of integrals}
+\end{align*}
+$\E[XY]$ is \emph{not} an integral against $f(x)$ alone: it needs the joint density $f(x,y)$, which factorises as $f_X(x)f_Y(y)$ only under independence. That is why the product rule fails in general.
+\end{deriv}
+
+\subsection{Mean and variance [S3]}
+\begin{idea}
+The \textbf{mean} $\mu$ is the centre of mass of the distribution (where it would balance). The \textbf{variance} measures spread: the average \emph{squared} distance from the mean. Squaring stops positive and negative deviations from cancelling (their plain average is always $0$, see $\nu_1=0$ below) and penalises big deviations more. The \textbf{standard deviation} $\sigma=\sqrt{V[X]}$ puts spread back into the units of $X$; in finance $\sigma$ of returns is the volatility.
+\end{idea}
+\[\mu=\E[X]=\int_{-\infty}^{\infty}x f(x)\dd x,\qquad V[X]=\E\big[(X-\mu)^2\big]=\int_{-\infty}^{\infty}(x-\mu)^2f(x)\dd x.\]
+\begin{where}
+\w{$\mu$}{mean (first moment): centre of mass of the distribution.}
+\w{$(X-\mu)^2$}{squared distance of $X$ from its mean.}
+\w{$V[X]=\sigma^2$}{variance: average squared distance from the mean.}
+\end{where}
+\textbf{Properties [S3]:}\quad $V[a]=0,\qquad V[aX+b]=a^2V[X].$
+\begin{deriv}[{Derivation of $V[aX+b]=a^2V[X]$ (the slide states it; here is why)}]
+\vspace{-6pt}
+\begin{align*}
+\E[aX+b]&=a\mu+b && \why{linearity}\\
+V[aX+b]&=\E\big[(aX+b-(a\mu+b))^2\big] && \why{definition, with the new mean}\\
+&=\E\big[a^2(X-\mu)^2\big]=a^2\E\big[(X-\mu)^2\big]=a^2V[X] && \why{$b$ cancels; $a^2$ comes out}
+\end{align*}
+Reading: a shift $b$ moves the whole distribution but not its spread; a scale $a$ stretches every distance by $|a|$, so squared distances by $a^2$. $V[a]=0$ is the case ``$X$ is a constant'': there is no deviation at all.
+\end{deriv}
+\begin{exam}
+\flag{} [S3] says ``the variance is always positive''. It is always \emph{non-negative}: $V[a]=0$ for a constant, as the slide itself states. Also: $V[X+Y]=V[X]+V[Y]+2\mathrm{Cov}(X,Y)$, so variances add only for uncorrelated variables \beyond.
+\end{exam}
+
+\subsection{Mode, median, quartiles and percentiles [S4--S5]}
+\begin{idea}
+The mean is not the only ``average''. Two others need no integral of $x f(x)$ at all: the \textbf{mode} is the most likely value (peak of $f$), and the \textbf{median} is the 50/50 split point of probability (where the CDF crosses $\tfrac12$). Quartiles and percentiles generalise the median to other split points; Value-at-Risk later in finance is just a percentile of the P\&L distribution. The median is robust to outliers; the mean is not, which is exactly what the slide's temperature example is designed to show.
+\end{idea}
+\[F(Q_{\text{lower}})=\tfrac14,\qquad F(M)=\tfrac12,\qquad F(Q_{\text{upper}})=\tfrac34,\qquad F(P_n)=\tfrac{n}{100}.\]
+\begin{where}
+\w{$F(x)$}{CDF $\Prob(X\le x)=\int_{-\infty}^x f(u)\dd u$.}
+\w{mode}{value of $x$ where $f(x)$ is largest; several maxima $\Rightarrow$ several modes.}
+\w{$M$}{median: half the probability lies below it.}
+\w{$Q_{\text{lower}},Q_{\text{upper}}$}{quartiles; with $M$ they cut the distribution into 4 regions of probability $\tfrac14$ each.}
+\w{$P_n$}{$n$-th percentile: $n\%$ of the probability lies below it.}
+\end{where}
+\begin{worked}[{Slide example {[S5]} (worked here; the slide only poses it)}]
+110 days: days 1--100 at $80^\circ$, days 101--105 at $85^\circ$, days 106--110 at $90^\circ$.
+\begin{itemize}
+\item \textbf{Median:} with 110 observations the median is the average of the 55th and 56th sorted values. Both are $80$, so $M=80^\circ$.
+\item \textbf{Mode:} $80^\circ$ (100 of 110 days).
+\item \textbf{Mean:} $(100\cdot80+5\cdot85+5\cdot90)/110=8875/110\approx80.68^\circ$.
+\end{itemize}
+The 10 hot days drag the mean up but cannot move the median: the median only cares about \emph{ranks}, not magnitudes.
+\end{worked}
+
+\subsection{Moments and central moments [S6--S8]}
+\begin{idea}
+A \textbf{moment} $\E[X^k]$ measures the distribution ``about the origin'' $x=0$; a \textbf{central moment} $\nu_k=\E[(X-\mu)^k]$ measures it about its own mean, which is what describes shape (spread, asymmetry, tails) independent of location. Central moments are what we interpret; raw moments are what is easy to compute (especially from an MGF). So the practical skill is converting one into the other by expanding $(X-\mu)^k$ with the binomial theorem and applying linearity.
+\end{idea}
+\textbf{Raw moments [S6]:}\quad $\displaystyle \E[X^k]=\int_{-\infty}^{\infty}x^kf(x)\dd x,\qquad V[X]=\E[X^2]-\mu^2.$
+
+\textbf{Central moments [S7]:}\quad $\displaystyle \nu_k=\E\big[(X-\mu)^k\big]=\int_{-\infty}^{\infty}(x-\mu)^kf(x)\dd x,\qquad \nu_1=0,\quad \nu_2=V[X]=\sigma^2.$
+\begin{where}
+\w{$k$}{order (power) of the moment; $k=1$ gives the mean.}
+\w{$\E[X^k]$}{$k$-th moment ``about the origin''.}
+\w{$\nu_k$}{$k$-th central moment (Greek ``nu''); ``central'' because $\mu$ is subtracted \emph{before} raising to the power.}
+\w{$\nu_1=0$}{deviations from the mean average to zero: $\E[X-\mu]=\mu-\mu=0$.}
+\end{where}
+\begin{deriv}[{Derivation of $V[X]=\E[X^2]-\mu^2$ {[S6]}}]
+\vspace{-6pt}
+\begin{align*}
+V[X]&=\E[(X-\mu)^2]=\E[X^2-2\mu X+\mu^2] && \why{expand the square}\\
+&=\E[X^2]-2\mu\E[X]+\mu^2 && \why{linearity; $\mu$ is a constant}\\
+&=\E[X^2]-2\mu^2+\mu^2=\E[X^2]-\mu^2 && \why{$\E[X]=\mu$}
+\end{align*}
+So the variance needs only the first two \emph{raw} moments: ``mean of the square minus square of the mean''.
+\end{deriv}
+\begin{deriv}[{Derivation of $\nu_3$ in terms of raw moments {[S8]} (the slide gives only the answer)}]
+\vspace{-6pt}
+\begin{align*}
+(X-\mu)^3&=X^3-3\mu X^2+3\mu^2X-\mu^3 && \why{binomial expansion}\\
+\nu_3=\E[(X-\mu)^3]&=\E[X^3]-3\mu\E[X^2]+3\mu^2\E[X]-\mu^3 && \why{linearity}\\
+&=\E[X^3]-3\mu\E[X^2]+3\mu^3-\mu^3 && \why{$\E[X]=\mu$}\\
+&=\E[X^3]-3\E[X]\E[X^2]+2\E[X]^3 && \why{write $\mu=\E[X]$}
+\end{align*}
+\beyond{} The same recipe for $k=4$: $\nu_4=\E[X^4]-4\mu\E[X^3]+6\mu^2\E[X^2]-3\mu^4$ (binomial coefficients $1,4,6,4,1$; the last two terms $-4\mu^4+\mu^4$ combine).
+\end{deriv}
+\begin{exam}
+Know the general recipe, not just the $\nu_3$ answer: expand with the binomial theorem, take expectations term by term, replace $\E[X]$ by $\mu$, collect the pure-$\mu$ terms. Note $-3\E[X]\E[X^2]$ is a product of two moments, not $\E[X\cdot X^2]$.
+\end{exam}
+
+\subsection{Skewness and kurtosis [S9]}
+\begin{idea}
+Central moments carry the units of $X$ to the power $k$, so they cannot be compared across assets. Dividing by $\sigma^k$ gives a \textbf{dimensionless} shape number $\gamma_k$. The odd one, \textbf{skewness} $\gamma_3$, measures asymmetry: cubing keeps the sign of the deviation, so a long left tail of big negative deviations makes $\gamma_3<0$. The even one, \textbf{kurtosis} $\gamma_4$, measures tail weight: the fourth power makes rare large deviations dominate. The normal has $\gamma_4=3$, so it is used as the benchmark and \emph{excess kurtosis} $\gamma_4-3$ is what is reported. Equity returns typically show $\gamma_3<0$ and excess kurtosis $>0$ (crashes, fat tails), which is the empirical motivation for the stochastic-volatility models of Session 6.
+\end{idea}
+\[\gamma_k=\frac{\nu_k}{\sigma^k},\qquad \gamma_3=\text{skewness},\qquad\gamma_4=\text{kurtosis},\qquad \gamma_4\Big|_{\N(\mu,\sigma^2)}=\frac{\nu_4}{\sigma^4}=\frac{3\sigma^4}{\sigma^4}=3.\]
+\begin{where}
+\w{$\gamma_k$}{standardised (normalised, dimensionless) central moment.}
+\w{$\sigma^k$}{standard deviation to the $k$-th power; dividing removes the units of $X$.}
+\w{$\gamma_3$}{$=0$ if symmetric about the mean; $<0$ if skewed to values smaller than the mean (long left tail); $>0$ long right tail.}
+\w{$\gamma_4$}{tail weight relative to the shoulders; $=3$ for any normal.}
+\w{$\gamma_4-3$}{excess kurtosis: $>0$ means narrower peak and fatter tails than a normal with the same mean and variance.}
+\end{where}
+\begin{deriv}[{Why $\nu_4=3\sigma^4$ for a normal \beyond{} (via the MGF of the next entries)}]
+For $Y=X-\mu\sim\N(0,\sigma^2)$, $M_Y(\theta)=e^{\frac12\sigma^2\theta^2}=1+\tfrac12\sigma^2\theta^2+\tfrac18\sigma^4\theta^4+\cdots$. The coefficient of $\theta^4/4!$ is $\E[Y^4]$, so $\E[Y^4]=4!\cdot\tfrac18\sigma^4=3\sigma^4$. Odd powers are absent, so $\nu_3=0$ (symmetry).
+\end{deriv}
+\begin{exam}
+\flag{} [S9] writes the normal kurtosis as $v_4/\sigma^4$; it is $\nu_4/\sigma^4$ (Greek nu). Know the \emph{interpretation} of signs, it is a common short-answer question.
+\end{exam}
+
+\subsection{Moment generating function [S10]}
+\begin{idea}
+Computing $\int x^k f(x)\dd x$ for every $k$ is laborious. The MGF packages \emph{all} moments into one function: expand $e^{\theta X}$ as a power series and each moment $\E[X^n]$ appears as a coefficient. Differentiating $n$ times at $\theta=0$ picks out exactly that coefficient. The real payoff in finance: $M_X(1)=\E[e^X]$, so if $X$ is a log-return, the MGF evaluated at $1$ is the expected gross return of the price.
+\end{idea}
+\[M_X(\theta)=\E\big[e^{\theta X}\big]=\int_{-\infty}^{\infty}e^{\theta x}f(x)\dd x,\qquad M_X(0)=1,\qquad \E[X^n]=\frac{\mathrm d^nM_X(\theta)}{\mathrm d\theta^n}\bigg|_{\theta=0}.\]
+\begin{where}
+\w{$\theta$}{a dummy real variable (not a parameter of the distribution).}
+\w{$e^{\theta X}$}{the random variable whose expectation generates the moments.}
+\w{$M_X(0)=1$}{$e^0=1$ and $\int f=1$.}
+\end{where}
+\begin{deriv}[{Derivation {[S10]}}]
+\vspace{-6pt}
+\begin{align*}
+e^{y}&=1+y+\frac{y^2}{2!}+\frac{y^3}{3!}+\cdots && \why{Taylor series, put $y=\theta X$}\\
+\E\big[e^{\theta X}\big]&=\E\Big[1+\theta X+\frac{\theta^2X^2}{2!}+\frac{\theta^3X^3}{3!}+\cdots\Big]\\
+&=1+\E[X]\,\theta+\E[X^2]\frac{\theta^2}{2!}+\E[X^3]\frac{\theta^3}{3!}+\cdots && \why{linearity; $\theta$ is not random}
+\end{align*}
+Differentiate $n$ times: every term with power $<n$ vanishes, the $\theta^n/n!$ term becomes $\E[X^n]$, and every higher term still carries a factor $\theta$, which is killed by setting $\theta=0$. Hence $M^{(n)}_X(0)=\E[X^n]$.
+\end{deriv}
+
+\subsection{The normal distribution: PDF [S11]}
+\begin{idea}
+The bell curve $e^{-x^2/2}$ has no elementary antiderivative, so we cannot show it integrates to a finite number by ordinary integration. The trick (Gaussian integral) is to square the integral and switch to polar coordinates, giving $\sqrt\pi$. Once we know $\int e^{-y^2}\dd y=\sqrt\pi$, a change of variable tells us the exact constant $\frac{1}{\sqrt{2\pi}\sigma}$ that makes the normal density integrate to $1$. That normalising constant is the only thing this slide is establishing.
+\end{idea}
+\[I=\int_{-\infty}^{\infty}e^{-y^2}\dd y,\qquad I^2=\pi\ \Rightarrow\ I=\sqrt\pi.\]
+\begin{deriv}[{Why $I^2=\pi$ \beyond{} (the slide states it)}]
+\vspace{-6pt}
+\begin{align*}
+I^2&=\int_{-\infty}^{\infty}e^{-x^2}\dd x\int_{-\infty}^{\infty}e^{-y^2}\dd y=\iint_{\R^2}e^{-(x^2+y^2)}\dd x\dd y && \why{product of two copies}\\
+&=\int_0^{2\pi}\!\!\int_0^\infty e^{-r^2}\,r\dd r\dd\vartheta && \why{polar: $x^2+y^2=r^2$, $\dd x\dd y=r\dd r\dd\vartheta$}\\
+&=2\pi\Big[-\tfrac12e^{-r^2}\Big]_0^\infty=2\pi\cdot\tfrac12=\pi && \why{the extra $r$ makes it integrable}
+\end{align*}
+\end{deriv}
+\begin{deriv}[{From $\sqrt\pi$ to the normal PDF {[S11]}}]
+\vspace{-6pt}
+\begin{align*}
+&\text{Put } y=\tfrac{x}{\sqrt2},\ \dd y=\tfrac{\dd x}{\sqrt2}: && \sqrt\pi=\int e^{-x^2/2}\frac{\dd x}{\sqrt2}\ \Rightarrow\ \int_{-\infty}^\infty\frac{1}{\sqrt{2\pi}}e^{-\frac{x^2}{2}}\dd x=1.\\
+&\text{Put } y=\tfrac{x-\mu}{\sqrt2\sigma},\ \dd y=\tfrac{\dd x}{\sqrt2\sigma}: && \sqrt\pi=\int e^{-\frac{(x-\mu)^2}{2\sigma^2}}\frac{\dd x}{\sqrt2\sigma}\ \Rightarrow\ \int_{-\infty}^\infty\frac{1}{\sqrt{2\pi}\sigma}e^{-\frac{(x-\mu)^2}{2\sigma^2}}\dd x=1.
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$\phi(x)$}{$\frac{1}{\sqrt{2\pi}}e^{-x^2/2}$: standard normal PDF ($\mu=0,\sigma=1$).}
+\w{$f(x)$}{$\frac{1}{\sqrt{2\pi}\sigma}e^{-\frac{(x-\mu)^2}{2\sigma^2}}$: normal PDF with mean $\mu$, variance $\sigma^2$.}
+\w{$\frac{1}{\sqrt{2\pi}\sigma}$}{normalising constant: $\sqrt\pi$ from $I$ times $\sqrt2\sigma$ from the substitution.}
+\w{$\frac{(x-\mu)^2}{2\sigma^2}$}{squared distance from the mean in units of the variance; controls the bell shape.}
+\end{where}
+
+\subsection{MGF of the normal distribution [S12--S13]}
+\begin{idea}
+This is the single most reused calculation of the course. Multiplying the normal density by $e^{\theta x}$ just adds a linear term $\theta x$ to a quadratic exponent; a quadratic plus a linear term is still a quadratic, i.e.\ still a (shifted) normal bell. \textbf{Completing the square} rewrites the exponent as ``a normal density with mean $\mu+\sigma^2\theta$'' times a constant $e^{\mu\theta+\frac12\sigma^2\theta^2}$. The density integrates to $1$, leaving the constant. The same trick reappears as the ``change of measure'' in Sessions 2, 6 and 7 (multiplying by an exponential shifts the mean of a normal).
+\end{idea}
+\[X\sim\N(\mu,\sigma^2):\quad M_X(\theta)=\E\big[e^{\theta X}\big]=\exp\Big(\mu\theta+\tfrac12\sigma^2\theta^2\Big),\qquad Z\sim\N(0,1):\quad M_Z(\theta)=e^{\theta^2/2}.\]
+\begin{deriv}[{Derivation by completing the square {[S12--S13]} --- every line of the slide}]
+Steps: (1) combine the two exponentials and expand $(x-\mu)^2$; (2) put everything over $2\sigma^2$; (3) group the terms in $x$.
+\vspace{-6pt}
+\begin{align*}
+\E\big[e^{\theta X}\big]&=\frac{1}{\sqrt{2\pi}\sigma}\int_{-\infty}^\infty e^{\theta x}\exp\Big(-\frac{(x-\mu)^2}{2\sigma^2}\Big)\dd x\\
+&=\frac{1}{\sqrt{2\pi}\sigma}\int\exp\Big(\theta x-\frac{x^2-2\mu x+\mu^2}{2\sigma^2}\Big)\dd x && \why{1}\\
+&=\frac{1}{\sqrt{2\pi}\sigma}\int\exp\Big(-\frac{-2\sigma^2\theta x+x^2-2\mu x+\mu^2}{2\sigma^2}\Big)\dd x && \why{2}\\
+&=\frac{1}{\sqrt{2\pi}\sigma}\int\exp\Big(-\frac{x^2-2(\mu+\sigma^2\theta)x+\mu^2}{2\sigma^2}\Big)\dd x && \why{3}\\
+\intertext{\small\color{derrule}Add and subtract $2\mu\sigma^2\theta+\sigma^4\theta^2$ so that the first three terms form $(\mu+\sigma^2\theta)^2$:}
+&=\frac{1}{\sqrt{2\pi}\sigma}\int\exp\Big(-\frac{x^2-2(\mu+\sigma^2\theta)x+\overbrace{(\mu^2+2\mu\sigma^2\theta+\sigma^4\theta^2)}^{(\mu+\sigma^2\theta)^2}-2\mu\sigma^2\theta-\sigma^4\theta^2}{2\sigma^2}\Big)\dd x\\
+\intertext{\small\color{derrule}Close the perfect square; the leftover $\frac{2\mu\sigma^2\theta+\sigma^4\theta^2}{2\sigma^2}=\mu\theta+\frac12\sigma^2\theta^2$ comes out with a plus sign:}
+&=\frac{1}{\sqrt{2\pi}\sigma}\int\exp\Big(-\frac{[x-(\mu+\sigma^2\theta)]^2}{2\sigma^2}+\mu\theta+\frac{\sigma^2\theta^2}{2}\Big)\dd x\\
+&=e^{\mu\theta+\frac{\sigma^2\theta^2}{2}}\underbrace{\frac{1}{\sqrt{2\pi}\sigma}\int\exp\Big(-\frac{[x-(\mu+\sigma^2\theta)]^2}{2\sigma^2}\Big)\dd x}_{=1:\ \text{PDF of }\N(\mu+\sigma^2\theta,\ \sigma^2)}=e^{\mu\theta+\frac12\sigma^2\theta^2}.
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$\mu\theta$}{contribution of the mean.}
+\w{$\frac12\sigma^2\theta^2$}{contribution of the variance (the convexity term).}
+\w{$\mu+\sigma^2\theta$}{centre of the completed square: the tilted density is normal with mean shifted by $\sigma^2\theta$, same variance.}
+\end{where}
+\begin{worked}[{Check: recovering mean and variance \beyond}]
+$M'(\theta)=(\mu+\sigma^2\theta)M(\theta)\Rightarrow M'(0)=\mu$. $M''(\theta)=\sigma^2M+(\mu+\sigma^2\theta)^2M\Rightarrow M''(0)=\sigma^2+\mu^2$. So $V[X]=\E[X^2]-\mu^2=\sigma^2$ \checkmark.
+\end{worked}
+\begin{exam}
+Be able to reproduce the completing-the-square derivation from a blank page: it is the template for every ``$\E[e^{aZ}]$'' and every Girsanov drift-shift later. Shortcut to remember: \textbf{$\E[e^{aZ}]=e^{a^2/2}$ for $Z\sim\N(0,1)$}.
+\end{exam}
+
+\subsection{Lognormal random variables [S14]}
+\begin{idea}
+If $X$ is normal, $Y=e^X$ is \textbf{lognormal}: always positive, right-skewed. The MGF hands us its mean for free, because $\E[e^X]$ \emph{is} $M_X(1)$. Notice $\E[e^X]=e^{\mu+\frac12\sigma^2}>e^{\mu}=e^{\E[X]}$: averaging a convex function gives more than the function of the average (Jensen). That extra $\frac12\sigma^2$ is the convexity correction that turns up as $r-\frac12\sigma^2$ in Session 2 onward.
+\end{idea}
+\[X\sim\N(\mu,\sigma^2),\quad Y=e^X,\quad \ln Y\sim\N(\mu,\sigma^2),\quad \E[Y]=\E[e^X]=M_X(1)=\exp\Big(\mu+\tfrac12\sigma^2\Big).\]
+\begin{where}
+\w{$X$}{normal variable, e.g.\ a continuously compounded return.}
+\w{$Y=e^X$}{lognormal variable: always positive, e.g.\ a price $S_T=S_0e^X$.}
+\w{$M_X(1)$}{MGF at $\theta=1$, since $e^X=e^{1\cdot X}$.}
+\w{$\tfrac12\sigma^2$}{convexity term: $\E[e^X]>e^{\E[X]}$.}
+\end{where}
+\beyond{} Also $\E[Y^n]=M_X(n)=e^{n\mu+\frac12n^2\sigma^2}$, so $V[Y]=e^{2\mu+\sigma^2}(e^{\sigma^2}-1)$.
+\begin{worked}[{Slide question {[S14]}: why normal for returns, lognormal for prices? (answer not on slide)}]
+Over a period split into many short sub-periods, the log-return is a \emph{sum} of many small log-returns, $\ln(S_T/S_0)=\sum_i\ln(S_{t_{i+1}}/S_{t_i})$, so by the central limit theorem it is approximately normal and can be negative. The price compounds \emph{multiplicatively}, $S_T=S_0e^{\text{sum}}$, so it is lognormal: it can never go below zero (limited liability), and it is right-skewed, as observed.
+\end{worked}
+
+\subsection{Two-state model: hedging and the no-arbitrage price [S15--S17]}
+\begin{idea}
+The goal of S15--S22 is to show three ideas in the simplest possible world: \textbf{arbitrage, replication and risk-neutrality}. If we sell a call we are exposed to the stock going up. Buying $\Delta$ shares offsets that: choose $\Delta$ so the combined portfolio is worth \emph{the same in both states}. A portfolio with a certain payoff is a bond; with $r=0$ it must cost today exactly what it pays tomorrow, otherwise someone makes riskless money. That one equation pins down $C_0$. We never needed to know how likely ``up'' is.
+\end{idea}
+\textbf{Setup [S15]:} $S_0=100$; tomorrow $S_1=110$ or $90$; ATM call $K=100$ pays $(S_1-K)^+=10$ or $0$; $r=0$. Before any argument: $0\le C_0\le10$.
+\begin{deriv}[{Derivation of $\Delta$ and $C_0$ {[S16]}}]
+Portfolio: $\Delta\times$stock $-\,1\times$call (we sold the call, bought $\Delta$ shares).
+\vspace{-4pt}
+\begin{align*}
+\underbrace{\Delta\times110-1\times10}_{\text{up}}&=\underbrace{\Delta\times90-1\times0}_{\text{down}} && \why{riskless: same value in both states}\\
+20\Delta&=10\ \Rightarrow\ \Delta=\tfrac12\\
+\text{value tomorrow}&=110\cdot\tfrac12-10=90\cdot\tfrac12=45 && \why{certain, in either state}\\
+\text{value today}&=100\cdot\tfrac12-C_0=45 && \why{no arbitrage with $r=0$}\\
+C_0&=50-45=5.
+\end{align*}
+If $C_0>5$: sell the call, buy $\frac12$ share, pocket $C_0-5$ today, owe nothing tomorrow. If $C_0<5$: do the reverse. Either is an arbitrage.
+\end{deriv}
+\begin{where}
+\w{$\Delta$}{shares bought per call sold (hedge ratio); generally $\Delta=\frac{C_u-C_d}{S_u-S_d}=\frac{10-0}{110-90}$ \beyond.}
+\w{$-1\times10,\ -1\times0$}{the call payoff we owe in each state (short position).}
+\w{$45$}{today's value of a riskless payoff of $45$ when $r=0$ (otherwise $45/(1+r)$).}
+\end{where}
+\textbf{Role of probabilities [S17].} No probability was used. Probabilities only matter through \emph{which states are possible}:
+\begin{itemize}
+\item $\Prob(\text{up})=1$ is impossible: the stock would surely beat the risk-free rate, so borrow at $r$, buy stock, guaranteed profit.
+\item $\Prob(\text{down})=1$ is also impossible (slide asks ``why?''): short the stock, invest the proceeds at $r$, buy it back cheaper, guaranteed profit.
+\item So the only role of probabilities is to make sure both states can happen.
+\end{itemize}
+
+\subsection{Two-state model: risk-neutral probabilities [S18--S19]}
+\begin{idea}
+Can we still price by ``expected payoff''? Yes, provided we use the specific probability $p^*$ that reproduces the no-arbitrage price. That $p^*$ is the \textbf{risk-neutral probability}. It is a pricing device, not a forecast: it is defined as the probability under which the stock earns exactly the risk-free rate (here $0$), so investors appear to demand no risk premium. Why is it legitimate to ignore real-world risk aversion? Because the hedge removed the risk: a hedged position earns $r$ no matter what investors' preferences are.
+\end{idea}
+\begin{deriv}[{Finding $p^*$ {[S18]}}]
+\vspace{-6pt}
+\begin{align*}
+\E^*[S_1]&=110p^*+90(1-p^*),\qquad \E^*[C_1]=10p^*+0\cdot(1-p^*)=10p^*\\
+\E^*[C_1]&=C_0=5\ \Rightarrow\ p^*=\tfrac12 && \why{match the hedge price}\\
+\E^*[S_1]&=110\cdot\tfrac12+90\cdot\tfrac12=100=S_0 && \why{the stock has zero expected gain}
+\end{align*}
+Equivalently, define $p^*$ by $\E^*[S_1]=S_0(1+r)$: $p^*=\frac{S_0(1+r)-S_d}{S_u-S_d}=\frac{100-90}{20}=\frac12$, then $C_0=\frac{p^*C_u+(1-p^*)C_d}{1+r}=5$ \beyond.
+\end{deriv}
+\begin{deriv}[{Why hedging price $=$ risk-neutral price (general one-step proof) \beyond}]
+With $\Delta=\frac{C_u-C_d}{S_u-S_d}$ and $r$: $C_0=\Delta S_0-\frac{\Delta S_u-C_u}{1+r}$. Substitute and collect $C_u$, $C_d$:
+\[C_0=\frac{1}{1+r}\Big[p^*C_u+(1-p^*)C_d\Big],\qquad p^*=\frac{S_0(1+r)-S_d}{S_u-S_d},\quad 1-p^*=\frac{S_u-S_0(1+r)}{S_u-S_d}.\]
+The weights are positive iff $S_d<S_0(1+r)<S_u$, which is exactly the no-arbitrage condition of [S17].
+\end{deriv}
+\begin{where}
+\w{$p^*$}{risk-neutral probability of the up state (pricing device, not a forecast).}
+\w{$\E^*[S_1]=S_0$}{with $r=0$, under $p^*$ the stock has zero expected gain: the defining property of the risk-neutral measure (with $r\ne0$: $S_0(1+r)$, Session 2).}
+\end{where}
+\textbf{Why it works [S19].} The hedge argument uses only \emph{which} probabilities are zero or non-zero. So if an arbitrage exists for one $0<p<1$, it exists for all; if none exists for one $p$, none exists for any. In the real world we expect $p\ge\frac12$ (risk-averse investors want a premium), so real-world expected values of stock and option exceed the arbitrage-free prices. Under $p^*$ no premium is needed: \textbf{the ability to hedge has removed the risk premium.}
+
+\subsection{Three-state (trinomial) model and incompleteness [S20--S22]}
+\begin{idea}
+Add a middle state $S_1=100$. Now there are three possible futures but still only two instruments (stock and cash), i.e.\ one free number $\Delta$. You cannot make a portfolio flat across three states with one knob, so perfect replication fails. Hedging only produces \emph{bounds} on the price, and correspondingly there are infinitely many risk-neutral probability sets, each giving a different price in the bound. This is an \textbf{incomplete market}; Session 6 (stochastic volatility) is the continuous-time version of the same problem.
+\end{idea}
+\textbf{Setup [S20]:} $S_1\in\{110,100,90\}$, call payoffs $\{10,0,0\}$.
+\begin{deriv}[{Hedging gives only an upper bound {[S21]}}]
+Portfolio ``$\Delta$ shares, short 1 call'' is worth $110\Delta-10,\ 100\Delta,\ 90\Delta$. Making all three equal needs 2 equations (up $=$ middle, middle $=$ down) in 1 unknown: impossible.
+\begin{itemize}
+\item Match middle and down: $100\Delta=90\Delta\Rightarrow\Delta=0$, no hedge at all.
+\item Match up and down: $\Delta=\frac12$ (the two-state hedge). Portfolio worth $45,\ 50,\ 45$: never below $45$ and sometimes above, so it must cost more than $45$ today:
+\[\underbrace{100\cdot\tfrac12}_{50}-C_0>45\ \Rightarrow\ C_0<5.\]
+\end{itemize}
+Lower bound \beyond: the call pays $\ge0$ and $>0$ in one state, so $C_0>0$.
+\end{deriv}
+\begin{deriv}[{Risk-neutral approach {[S22]}}]
+\vspace{-6pt}
+\begin{align*}
+\E^*[S_1]&=110p_u+100p_m+90p_d=100 && \why{zero expected gain, $r=0$}\\
+&\Rightarrow\ p_u=p_d=:p^*,\quad p_m=1-2p^* && \why{with $\textstyle\sum p=1$}\\
+C_0&=\E^*[C_1]=10p^* && \why{only the up state pays}\\
+0<p^*<\tfrac12&\ \Rightarrow\ 0<C_0<5 && \why{$p^*>0,\ 1-2p^*>0$}
+\end{align*}
+The risk-neutral range $(0,5)$ matches the hedging bounds exactly.
+\end{deriv}
+\textbf{Incomplete market [S22]:} portfolios of stock and cash cannot replicate every payoff, so prices are only pinned to an interval. In the two-state world the upper and lower bounds coincide and the price is unique [S20].
+\begin{exam}
+Rule of thumb \beyond: a one-period market is complete iff (number of independent traded instruments) $=$ (number of states). Two-state: stock $+$ cash $=2$ for $2$ states $\Rightarrow$ complete. Three-state: $2<3\Rightarrow$ incomplete. Adding one more traded option would complete it.
+\end{exam}
+
+\subsection{Implementation \beyond{} (tested)}
+\begin{lstlisting}[language=Python]
+import numpy as np
+mu, s = 0.1, 0.2
+M = lambda th: np.exp(mu*th + 0.5*s**2*th**2)     # normal MGF
+h = 1e-3
+m1 = (M(h) - M(-h)) / (2*h)                          # E[X]   = M'(0)
+m2 = (M(h) - 2*M(0) + M(-h)) / h**2                 # E[X^2] = M''(0)
+print(round(m1, 6), round(m2, 6), round(mu**2 + s**2, 6))   # 0.1 0.05 0.05
+# Two-state hedge: S0=100 -> 110/90, ATM call, r=0
+Su, Sd, Cu, Cd, S0 = 110, 90, 10, 0, 100
+delta = (Cu - Cd) / (Su - Sd)
+C0 = delta*S0 - (delta*Su - Cu)     # cost of shares minus sure portfolio value
+p = (S0 - Sd) / (Su - Sd)
+print(delta, C0, p*Cu + (1-p)*Cd)   # 0.5 5.0 5.0
+# Trinomial: call price 10 p* as p* sweeps (0, 1/2)
+print(np.round(10*np.linspace(1e-6, 0.5-1e-6, 5), 4))  # [0. 1.25 2.5 3.75 5.]
+\end{lstlisting}
+
+\section{Comparison tables}
+\subsection{Raw vs central vs standardised moments}
+{\small\begin{tabularx}{\linewidth}{@{}l X X X@{}}\toprule
+ & Raw $\E[X^k]$ & Central $\nu_k=\E[(X-\mu)^k]$ & Standardised $\gamma_k=\nu_k/\sigma^k$\\\midrule
+About & origin $x=0$ & mean $\mu$ & mean, in units of $\sigma$\\
+$k=1$ & mean $\mu$ & $0$ & $0$\\
+$k=2$ & $\mu^2+\sigma^2$ & variance $\sigma^2$ & $1$\\
+$k=3$ & --- & $\nu_3$ & skewness (0 for normal)\\
+$k=4$ & --- & $\nu_4$ ($3\sigma^4$ for normal) & kurtosis (3 for normal)\\
+Units & units$^k$ & units$^k$ & dimensionless\\\bottomrule
+\end{tabularx}}
+\subsection{Normal vs lognormal}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Normal $X\sim\N(\mu,\sigma^2)$ & Lognormal $Y=e^X$\\\midrule
+Support & $(-\infty,\infty)$ & $(0,\infty)$\\
+Mean & $\mu$ & $e^{\mu+\frac12\sigma^2}$\\
+Variance & $\sigma^2$ & $e^{2\mu+\sigma^2}(e^{\sigma^2}-1)$ \beyond\\
+Shape & symmetric & right-skewed\\
+MGF / moments & $e^{\mu\theta+\frac12\sigma^2\theta^2}$ & $\E[Y^n]=M_X(n)$\\
+Used for & returns & prices\\\bottomrule
+\end{tabularx}}
+\subsection{Two-state vs three-state model}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Two-state [S15--S19] & Three-state [S20--S22]\\\midrule
+States / instruments & 2 states, 2 instruments & 3 states, 2 instruments\\
+Hedge & $\Delta=\frac12$, riskless & no riskless $\Delta$\\
+Risk-neutral $p^*$ & unique: $\frac12$ & any $p^*\in(0,\frac12)$\\
+Call price & unique: $5$ & interval: $(0,5)$\\
+Market & complete & incomplete\\\bottomrule
+\end{tabularx}}
+\subsection{Measures of the centre}
+{\small\begin{tabularx}{\linewidth}{@{}l X@{}}\toprule
+Mean & $\int xf(x)\dd x$; sensitive to outliers ($80.68^\circ$ in [S5])\\
+Median & $F(M)=\frac12$; robust ($80^\circ$ in [S5])\\
+Mode & $\arg\max f(x)$; may not be unique ($80^\circ$ in [S5])\\\bottomrule
+\end{tabularx}}
+
+\section{Master formula sheet}
+\textbf{Expectation and variance [S2--S3]}
+\begin{itemize}
+\item $\E[g(X)]=\int g(x)f(x)\dd x$; $\E[a]=a$, $\E[ag]=a\E[g]$, $\E[s+t]=\E[s]+\E[t]$.
+\item $V[X]=\E[(X-\mu)^2]=\E[X^2]-\mu^2$; $V[aX+b]=a^2V[X]$.
+\end{itemize}
+\textbf{Location [S4]:} $F(Q_{\text{lower}})=\frac14$, $F(M)=\frac12$, $F(Q_{\text{upper}})=\frac34$, $F(P_n)=\frac{n}{100}$.
+
+\textbf{Moments [S6--S9]}
+\begin{itemize}
+\item $\nu_k=\E[(X-\mu)^k]$; $\nu_3=\E[X^3]-3\E[X]\E[X^2]+2\E[X]^3$.
+\item $\gamma_k=\nu_k/\sigma^k$; normal: $\gamma_3=0$, $\gamma_4=3$; excess kurtosis $\gamma_4-3$.
+\end{itemize}
+\textbf{MGF, normal, lognormal [S10--S14]}
+\begin{itemize}
+\item $M_X(\theta)=\E[e^{\theta X}]$; $\E[X^n]=M^{(n)}_X(0)$.
+\item $X\sim\N(\mu,\sigma^2)$: $M_X(\theta)=e^{\mu\theta+\frac12\sigma^2\theta^2}$; $M_Z(\theta)=e^{\theta^2/2}$; $\int e^{-y^2}\dd y=\sqrt\pi$.
+\item $f(x)=\frac{1}{\sqrt{2\pi}\sigma}e^{-\frac{(x-\mu)^2}{2\sigma^2}}$.
+\item $Y=e^X$: $\E[Y]=e^{\mu+\frac12\sigma^2}$ ($\frac12\sigma^2$ = convexity term).
+\end{itemize}
+\textbf{Lattice pricing [S15--S22]}
+\begin{itemize}
+\item $\Delta=\frac{C_u-C_d}{S_u-S_d}$; $C_0=\Delta S_0-\frac{\Delta S_u-C_u}{1+r}$ \beyond.
+\item $p^*=\frac{S_0(1+r)-S_d}{S_u-S_d}$; $C_0=\frac{p^*C_u+(1-p^*)C_d}{1+r}$ (slides: $r=0$, $p^*=\frac12$, $C_0=5$).
+\item Trinomial: $p^*\in(0,\frac12)$, middle $1-2p^*$, $C_0=10p^*\in(0,5)$.
+\end{itemize}
+
+\section{Glossary}
+\begin{itemize}
+\item \textbf{Arbitrage:} riskless profit with no initial cost; prices must rule it out [S16].
+\item \textbf{Arbitrage-free price:} a price that admits no arbitrage [S20].
+\item \textbf{Central moment $\nu_k$:} $\E[(X-\mu)^k]$ [S7]. \quad \textbf{CDF $F(x)$:} $\Prob(X\le x)$ [S4].
+\item \textbf{Complete market:} every payoff can be replicated (two-state model).
+\item \textbf{Excess kurtosis:} $\gamma_4-3$ [S9]. \quad \textbf{Expectation:} probability-weighted average $\int gf$ [S2].
+\item \textbf{Hedge ratio $\Delta$:} shares held per option to remove risk [S16].
+\item \textbf{Incomplete market:} not every payoff can be replicated; prices lie in an interval [S22].
+\item \textbf{Kurtosis $\gamma_4$, skewness $\gamma_3$:} standardised 4th / 3rd central moments [S9].
+\item \textbf{Lattice (tree) model:} discrete states for future prices [S15]. \quad \textbf{Lognormal:} $Y$ with $\ln Y$ normal [S14].
+\item \textbf{Moment:} $\E[X^k]$ [S6]. \quad \textbf{MGF $M_X(\theta)$:} $\E[e^{\theta X}]$ [S10].
+\item \textbf{Replication:} building a payoff from stock and cash [S22].
+\item \textbf{Risk-neutral probability $p^*$:} probability that reproduces arbitrage-free prices; stock earns the risk-free rate [S18].
+\item \textbf{Risk premium:} extra expected return demanded for bearing risk; removed by hedging [S19].
+\end{itemize}
+
+\section{Self-test}
+\subsection*{Questions}
+\addcontentsline{toc}{subsection}{Questions}
+\begin{enumerate}[label=Q\arabic*.]
+\item ([S3]) Show $V[aX+b]=a^2V[X]$ and $V[X]=\E[X^2]-\mu^2$.
+\item ([S5]) For the 110-day temperature data, find the mean, median and mode.
+\item ([S8]) Express $\nu_3$ in terms of raw moments.
+\item ([S9]) What do $\gamma_3<0$ and $\gamma_4-3>0$ say about a return distribution?
+\item ([S10]) Show $\E[X^n]=M^{(n)}_X(0)$. Use it to get the mean and variance of $\N(\mu,\sigma^2)$.
+\item ([S12--S13]) Derive $M_X(\theta)$ for $X\sim\N(\mu,\sigma^2)$ by completing the square.
+\item ([S14]) For $X\sim\N(\mu,\sigma^2)$ find $\E[e^X]$ and $\E[e^{2X}]$. Why model prices as lognormal?
+\item ([S15--S16]) $S_0=100$, $S_1\in\{110,90\}$, $r=0$. Price the ATM call by hedging. Repeat for an ATM put.
+\item ([S17--S19]) Find $p^*$ and verify both prices of Q8. Why is $p=1$ impossible?
+\item ([S20--S22]) In the trinomial model, find the range of arbitrage-free call prices by hedging and by risk-neutral probabilities. Why is the market incomplete?
+\end{enumerate}
+\subsection*{Solutions}
+\addcontentsline{toc}{subsection}{Solutions}
+\begin{enumerate}[label=S\arabic*.]
+\item $\E[aX+b]=a\mu+b$, so $V[aX+b]=\E[(aX-a\mu)^2]=a^2V[X]$. $\E[(X-\mu)^2]=\E[X^2]-2\mu\E[X]+\mu^2=\E[X^2]-\mu^2$.
+\item Mean $8875/110\approx80.68$; median: 55th and 56th values are 80, so 80; mode 80.
+\item $\nu_3=\E[X^3]-3\mu\E[X^2]+3\mu^2\E[X]-\mu^3=\E[X^3]-3\E[X]\E[X^2]+2\E[X]^3$.
+\item Negative skew: long left tail (large losses more likely than equally large gains). Positive excess kurtosis: fatter tails and sharper peak than a normal with the same mean and variance.
+\item Differentiate $\sum\E[X^k]\theta^k/k!$ $n$ times and set $\theta=0$. $M'(\theta)=(\mu+\sigma^2\theta)M$, so $M'(0)=\mu$; $M''(0)=\sigma^2+\mu^2$; variance $\sigma^2$.
+\item Exponent $\theta x-\frac{(x-\mu)^2}{2\sigma^2}=-\frac{[x-(\mu+\sigma^2\theta)]^2}{2\sigma^2}+\mu\theta+\frac12\sigma^2\theta^2$; the remaining integral is a normal PDF $=1$.
+\item $M_X(1)=e^{\mu+\frac12\sigma^2}$; $M_X(2)=e^{2\mu+2\sigma^2}$. Prices are positive and compound multiplicatively; returns add.
+\item Call: $\Delta=\frac{10-0}{20}=\frac12$, portfolio 45, $C_0=50-45=5$. Put payoffs $0,10$: hold $\Delta$ shares with the long put: $110\Delta=90\Delta+10\Rightarrow\Delta=\frac12$, portfolio 55, $P_0=55-50=5$. (Put--call parity with $r=0$: $C-P=S_0-K=0$ \checkmark.)
+\item $p^*=\frac{100-90}{20}=\frac12$: $C_0=10\cdot\frac12=5$, $P_0=10\cdot\frac12=5$. If the stock surely rises, borrow and buy: riskless profit; so both states must be possible.
+\item Hedging: $\Delta=\frac12$ gives $45,50,45\Rightarrow C_0<5$; payoff $\ge0$ and sometimes $>0\Rightarrow C_0>0$. Risk-neutral: $p^*\in(0,\frac12)$, $C_0=10p^*\in(0,5)$. One instrument ($\Delta$) cannot match three states, so payoffs are not replicable.
+\end{enumerate}
+
+\section*{Appendix A. Slide coverage checklist}
+\addcontentsline{toc}{section}{Appendix A. Slide coverage checklist}
+{\small\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Slide & Content & Section\\\midrule
+S1 & Title & header\\
+S2 & PDF; $\E[g(X)]$; expectation properties; $\E[XY]\ne\E[X]\E[Y]$ & 1.1\\
+S3 & Mean and variance; variance properties; standard deviation & 1.2\\
+S4--S5 & Mode, median, quartiles, percentiles; temperature example & 1.3\\
+S6--S8 & Moments; $V[X]=\E[X^2]-\mu^2$; central moments; $\nu_3$ example & 1.4\\
+S9 & Standardised moments; skewness; kurtosis; excess kurtosis & 1.5\\
+S10 & Moment generating function; moments from derivatives & 1.6\\
+S11 & Gaussian integral; normal PDF & 1.7\\
+S12--S13 & Normal MGF by completing the square; standard normal MGF & 1.8\\
+S14 & Lognormal variables; $\E[e^X]$; returns vs prices & 1.9\\
+S15--S17 & Two-state setup; hedging $\Delta=\frac12$; $C_0=5$; role of probabilities & 1.10\\
+S18--S19 & Risk-neutral probability $p^*=\frac12$; risk premium removed & 1.11\\
+S20--S22 & Three-state model; upper bound; risk-neutral range; incomplete market & 1.12\\\bottomrule
+\end{tabularx}}
+
+\section*{Appendix B. Flag summary (\flag)}
+\addcontentsline{toc}{section}{Appendix B. Flag summary}
+\begin{enumerate}
+\item {}[S3] ``Variance is always positive'': it is non-negative; $V[a]=0$.
+\item {}[S9] $v_4$ should read $\nu_4$.
+\item {}[S2] $\E[XY]=\E[X]\E[Y]$ does hold under independence; ``in general'' is the key qualifier.
+\item {}[S21] Hedging only gives an upper bound; the lower bound $C_0>0$ comes from the payoff being non-negative.
+\item {}[S5, S8, S14, S17, S21] Questions posed without full answers (median, ``why sensible'', ``why?'', ``which two?''); the answers here are my own.
+\end{enumerate}
+\end{document}

@@ -1,0 +1,426 @@
+\documentclass[10pt]{article}
+\newcommand{\sessnum}{3}
+\newcommand{\sesstitle}{Brownian Motion and Martingale}
+\usepackage{qf620style}
+\begin{document}
+\begin{center}
+{\LARGE\bfseries QF620 Stochastic Modelling in Finance --- Session 3\\[2pt] Reference Cheatsheet}\\[6pt]
+{\large Brownian Motion and Martingale: random walks, the scaled-walk limit, the definition and properties of Brownian motion, the Markov property, geometric Brownian motion, Brownian martingales}\\[4pt]
+{\small Built from Session 3 slides (Tee Chyng Wen, SMU) $\cdot$ October 2026 $\cdot$ revised edition with intuition and full slide derivations}
+\end{center}
+\tableofcontents
+\vspace{4pt}
+\textbf{Source:} ``Session 3: Brownian Motion and Martingale'' (Tee Chyng Wen, SMU, 25 slides).
+
+\legend
+
+\textbf{What you must be able to do after this session:} state the four defining properties of Brownian motion and test a candidate process against them; compute mean, variance and covariance of $W_t$; do probability calculations by splitting into independent increments; show the Markov property; compute $\E[e^{\sigma W_t}]$ via the MGF; and prove or disprove the martingale property with the ``add and subtract'' trick $W_t=(W_t-W_s)+W_s$.
+
+\section*{Notation used throughout (slide conventions)}
+\addcontentsline{toc}{section}{Notation used throughout (slide conventions)}
+{\small\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Symbol & Meaning & Notes\\\midrule
+$S_n$ & position of a symmetric random walk after $n$ steps & [S2]\\
+$X_i$ & i.i.d.\ $\pm1$ steps, probability $\frac12$ each & [S9]\\
+$W_n(t)$ & scaled random walk with $n$ steps on $[0,t]$ & [S9]\\
+$W_t$ & (standard) Brownian motion / Wiener process at time $t$ & [S11]\\
+$s,t,T$ & times, usually $0\le s\le t\le T$ & \\
+$W_t-W_s$ & increment of $W$ over $[s,t]$ & $\sim\N(0,t-s)$ [S11]\\
+$\E_t[\cdot]$ & expectation conditional on information up to time $t$ (the path up to $t$) & [S16]\\
+$M_t$ & martingale & [S21]\\
+$X_t=e^{W_t}$ & geometric Brownian motion (slide's simplest form) & [S17]\\
+$\sigma$ & real constant (volatility) & [S24]\\\bottomrule
+\end{tabularx}}
+
+\textbf{Notation trap:} in Session 2 $S_n$ was a stock price and $X_i$ a coin toss; here $S_n$ is the random-walk position on [S2] and $X_t$ a generic process. $\E_s[\cdot]$ means $\E[\,\cdot\mid\F_s]$.
+
+\section*{0. Topic map}
+\addcontentsline{toc}{section}{0. Topic map}
+\begin{lstlisting}
+PREREQUISITES: S1 normal MGF, lognormal mean ; S2 arithmetic tree ±σ√(T/n) + CLT, conditional expectation rules
+    ▼
+SESSION 3
+├─ BROWNIAN [S2–S10]
+│     ├─ symmetric random walk: 2^n paths, range [−n, n]                        [S2]
+│     ├─ history: Brown (pollen), Einstein, Bachelier 1900 (stock prices)       [S3–S8]
+│     └─ scaled walk W_n: steps ±√(t/n) every t/n ; CLT ⇒ W_n(t) → N(0,t)       [S9–S10]
+├─ DEFINITION OF W_t [S11–S15]
+│     ├─ W_0=0 ; continuous ; stationary independent increments ; N(0,t−s)     [S11]
+│     ├─ √t Z : right marginals, wrong increments ⇒ not BM                      [S12–S13]
+│     ├─ E[W_t]=0, E[W_t²]=t, Cov(W_s,W_t)=min(s,t) ; jointly normal           [S14]
+│     └─ P(W₂<0 | W₁>0), P(W₁W₂>0)                                              [S15]
+├─ PROPERTIES [S16–S20]
+│     ├─ Markov: E_s[W_t] = W_s ; GBM X_t = e^{W_t}                             [S16–S17]
+│     └─ nowhere differentiable, fractal, recurrent ; reflection −W_t          [S18–S20]
+└─ MARTINGALES [S21–S25]
+      ├─ W_t ✓ ; W_t² − t ✓ ; W_t³ ✗                                            [S21–S23]
+      └─ E[e^{σW_t}] = e^{½σ²t} ; exp(σW_t − ½σ²t) exponential martingale       [S24–S25]
+    ▼
+LATER: S4 stochastic integrals and Itô (dW² = dt) ; S6 Black–Scholes ; S7 Girsanov
+\end{lstlisting}
+\textbf{The storyline of the session.}
+\begin{itemize}
+\item Session 2's arithmetic tree, with $\pm\sqrt{\Delta t}$ steps, is exactly a \textbf{scaled random walk}. Let the step size go to zero and you get \textbf{Brownian motion}, the continuous-time building block of every model in the course.
+\item The definition is about \textbf{increments}, not just marginals. That one point drives everything: it makes $W$ Markov, gives the covariance $\min(s,t)$, and lets you compute any conditional expectation by writing $W_t=(W_t-W_s)+W_s$ (future independent piece $+$ known piece).
+\item The \textbf{martingale} section is a toolkit for continuous-time pricing. The exponential martingale $e^{\sigma W_t-\frac12\sigma^2t}$ is exactly the discounted Black--Scholes stock under $\Q$; the $-\frac12\sigma^2t$ is the same convexity correction as in Sessions 1--2.
+\item Paths are continuous but \textbf{nowhere differentiable}, which is why Session 4 needs stochastic integrals and Itô's formula instead of ordinary calculus.
+\end{itemize}
+
+\section{Concept entries}
+
+\subsection{Symmetric random walk [S2]}
+\begin{idea}
+The simplest model of ``random up-and-down'': start at 0 and flip a fair coin each step, $+1$ for heads, $-1$ for tails. With $n$ steps there are $2^n$ equally likely paths. The position is not itself binomial; the \emph{number of up-steps} is, and the position is an affine function of it. Mean $0$ (fair coin), variance $n$ (one per step): the variance grows linearly in the number of steps, the seed of ``variance $=$ time'' for Brownian motion.
+\end{idea}
+\[S_4=2B-4,\qquad B\sim\mathrm{Bin}(4,0.5),\qquad \Prob(S_4=2k-4)=\binom4k\Big(\frac12\Big)^4.\]
+\begin{where}
+\w{$S_4$}{position after 4 steps; reachable values $-4,-2,0,2,4$; total paths $2^4=16$.}
+\w{$B$}{number of up steps among the 4.}
+\w{$2B-4$}{$B$ ups and $4-B$ downs give $B-(4-B)$.}
+\w{$\binom4k\frac1{16}$}{$\frac1{16},\frac4{16},\frac6{16},\frac4{16},\frac1{16}$ for $S_4=-4,\dots,4$.}
+\end{where}
+\begin{exam}
+\flag{} [S2] writes $S_4\sim\mathrm{Bin}(4,0.5)$. The number of up-steps is binomial; the position is $2B-4$ (mean $2\cdot2-4=0$, variance $4\cdot V[B]=4\cdot1=4$).
+\end{exam}
+
+\subsection{History: from pollen to stock prices [S3--S8]}
+\begin{itemize}
+\item \textbf{Robert Brown} (1827) observed the erratic motion of pollen particles in water and concluded it came from the particles themselves, not currents or evaporation [S3].
+\item \textbf{Einstein} showed the motion satisfies a clear statistical law [S4].
+\item \textbf{Louis Bachelier}, \emph{Th\'eorie de la sp\'eculation} (1900), modelled stock-price fluctuations with Brownian motion [S5--S8]; it is still the building block of the reference continuous-time market model. We approach it as an infinitesimal random walk: smaller and smaller steps at ever more frequent intervals [S8].
+\end{itemize}
+
+\subsection{From random walk to Brownian motion [S9--S10]}
+\begin{idea}
+Squeeze the random walk: take $n$ steps in time $t$, each of length $t/n$. To keep the total variance equal to $t$ (``variance $=$ elapsed time''), each jump must be $\pm\sqrt{t/n}$, the same $\sqrt{\Delta t}$ scaling as the Session 2 tree. As $n\to\infty$ the CLT turns the sum into a normal $\N(0,t)$, and because each step is a fresh coin, future moves never depend on the past. In the limit we get a continuous process with independent normal increments: Brownian motion.
+\end{idea}
+\textbf{Scaled random walk $W_n(t)$ [S9]:} (1) $W_n(0)=0$; (2) time spacing $t/n$; (3) up and down jumps equal, of size $\sqrt{t/n}$; (4) measure $\Prob$ with up/down probability $\frac12$ everywhere.
+\[W_n\Big(\frac in t\Big)=W_n\Big(\frac{i-1}{n}t\Big)+\sqrt{\frac tn}\,X_i,\qquad 1\le i\le n.\]
+\begin{deriv}[{From the recursion to the limit {[S9--S10]} (the slide says ``it can be shown'')}]
+\vspace{-6pt}
+\begin{align*}
+W_n(t)&=W_n(0)+\sum_{i=1}^n\sqrt{\tfrac tn}X_i=\sqrt t\cdot\frac{\sum_{i=1}^nX_i}{\sqrt n} && \why{telescope; $W_n(0)=0$}\\
+\E\Big[\tfrac{1}{\sqrt n}\textstyle\sum X_i\Big]&=0,\quad V\Big[\tfrac{1}{\sqrt n}\textstyle\sum X_i\Big]=\tfrac1n\cdot n=1 && \why{indep., $V[X_i]=1$}\\
+\frac{\sum X_i}{\sqrt n}&\xrightarrow{n\to\infty}Z\sim\N(0,1) && \why{CLT}\\
+W_n(t)&\to\sqrt t\,Z\sim\N(0,t)
+\end{align*}
+Why $\sqrt{t/n}$ and not $t/n$: the variance of the sum is $n\times(\text{jump})^2$. With jump $\sqrt{t/n}$ this is $t$; with $t/n$ it would be $t^2/n\to0$ (no randomness left).
+\end{deriv}
+\textbf{Why the limit is Brownian motion [S10]:}
+\begin{itemize}
+\item All marginal and conditional marginal distributions tend to normals.
+\item Future moves away from any position are independent of that position and of the whole history.
+\item A future displacement $W_n(s+t)-W_n(s)$ is (scaled) binomial with mean $0$, variance $t$; by the CLT it tends to $\N(0,t)$.
+\end{itemize}
+
+\subsection{Mathematical definition of Brownian motion [S11]}
+\begin{idea}
+Wiener (1923) turned the limit into a definition. Four properties, and they are \emph{necessary and sufficient}: start at zero; continuous paths; increments over non-overlapping intervals are independent and their distribution depends only on the interval length; and each increment is normal with variance equal to the elapsed time. Note that ``$W_t\sim\N(0,t)$ for each $t$'' is \emph{not} on the list; it follows from (1) and (4), but on its own it is far too weak (next entry).
+\end{idea}
+\[(1)\ W_0=0;\qquad(2)\ t\mapsto W_t\text{ continuous};\]
+\[(3)\text{ stationary, independent increments};\qquad(4)\ W_t-W_s\sim\N(0,t-s),\ 0\le s\le t.\]
+\begin{where}
+\w{independent}{$W_{t_2}-W_{t_1},\ W_{t_3}-W_{t_2},\dots$ over non-overlapping intervals are independent; in particular $W_t-W_s$ is independent of the whole path up to $s$.}
+\w{stationary}{the distribution of $W_t-W_s$ depends only on $t-s$, not on $s$.}
+\w{$\N(0,t-s)$}{increment is normal, mean $0$, variance $=$ elapsed time.}
+\end{where}
+\begin{exam}
+How to test a candidate process $X_t$: check $X_0=0$; continuity; compute the distribution of $X_t-X_s$ (must be $\N(0,t-s)$); check it is independent of $X_s$ (e.g.\ $\mathrm{Cov}(X_t-X_s,X_s)=0$ for jointly normal). \flag{} [S11] spells the name ``Weiner''; it is Wiener.
+\end{exam}
+
+\subsection{Example: $\sqrt t\,Z$ is not a Brownian motion [S12--S13]}
+\begin{idea}
+$X_t=\sqrt tZ$ uses \textbf{one} normal draw for all times. Each snapshot is $\N(0,t)$, so marginals look right. But the whole path is a deterministic curve $\sqrt t$ scaled by one random number: once you see $X_1$ you know the entire future. Increments are therefore perfectly correlated with the past and have the wrong variance. Lesson: Brownian motion is defined by its increments.
+\end{idea}
+\begin{deriv}[{Increment of $X_t=\sqrt tZ$ {[S12]}}]
+\vspace{-6pt}
+\begin{align*}
+X_{s+t}-X_s&=\sqrt{s+t}\,Z-\sqrt s\,Z=\big(\sqrt{s+t}-\sqrt s\big)Z && \why{same $Z$}\\
+&\sim\N\Big(0,\big(\sqrt{s+t}-\sqrt s\big)^2\Big) && \why{$V[cZ]=c^2$}\\
+&\sim\N\Big(0,\ 2s+t-2\sqrt{s(s+t)}\Big) && \why{expand}
+\end{align*}
+Brownian motion needs variance $t$; here $2s+t-2\sqrt{s(s+t)}<t$ for $s>0$ (since $s<\sqrt{s(s+t)}$). And the increment $=(\sqrt{s+t}-\sqrt s)Z$ is a multiple of $X_s=\sqrt sZ$: perfectly correlated, not independent. So $X_t$ is not a Brownian motion.
+\end{deriv}
+[S13]: requiring $\N(0,t-s)$ increments independent of the past for every $s<t$ is \emph{much stronger} than requiring $\N(0,t)$ marginals. Picture: $W_t$ is rough and wanders; $X_t$ is a smooth fan of $\sqrt t$ curves.
+
+\subsection{Statistical properties and joint normality [S14]}
+\begin{idea}
+Everything follows from ``increment $\sim\N(0,\text{elapsed time})$, independent of the past''. The covariance is the clever one: $W_s$ and $W_t$ share the path up to $s$, and beyond that $W_t$ only adds an independent piece. So they co-move through the common part only, and the covariance is the length of the shared time, $\min(s,t)$.
+\end{idea}
+\[\E[W_t]=0,\quad W_t\sim\N(0,t),\quad \E[W_t^2]=t,\quad \E[W_t-W_s]=0,\]
+\[V[W_t-W_s]=\E[(W_t-W_s)^2]=t-s,\qquad \mathrm{Cov}(W_s,W_t)=s\quad(s<t).\]
+\begin{deriv}[{Covariance \beyond{} (slide states the result)}]
+\vspace{-6pt}
+\begin{align*}
+\mathrm{Cov}(W_s,W_t)&=\E[W_sW_t]-0\cdot0=\E\big[W_s\big((W_t-W_s)+W_s\big)\big] && \why{add and subtract $W_s$}\\
+&=\E[W_s]\,\E[W_t-W_s]+\E[W_s^2] && \why{independent increments}\\
+&=0+s=s=\min(s,t) && \why{$\E[W_s^2]=s$}
+\end{align*}
+Correlation $\rho(W_s,W_t)=\frac{s}{\sqrt s\sqrt t}=\sqrt{s/t}$.
+\end{deriv}
+For $t_1<\cdots<t_n$, $(W_{t_1},\dots,W_{t_n})$ is \textbf{jointly normal}, mean $0$, covariance $\Sigma_{ij}=\min(t_i,t_j)$:
+\[\Sigma=\begin{pmatrix}t_1&t_1&t_1&\cdots&t_1\\t_1&t_2&t_2&\cdots&t_2\\t_1&t_2&t_3&\cdots&t_3\\\vdots&\vdots&\vdots&\ddots&\vdots\\t_1&t_2&t_3&\cdots&t_n\end{pmatrix}.\]
+Why jointly normal \beyond: each $W_{t_k}$ is a sum of the independent normal increments $W_{t_1},\ W_{t_2}-W_{t_1},\dots$, and linear combinations of independent normals are jointly normal.
+
+\subsection{Probability examples [S15]}
+\begin{idea}
+Any question about $W$ at two times is solved by splitting the later value into ``earlier value $+$ independent increment''. Here $W_2=W_1+Y$ with $W_1,Y$ independent $\N(0,1)$. Two independent standard normals have a rotationally symmetric joint density, so the probability of a region bounded by lines through the origin is just its angle divided by $360^\circ$.
+\end{idea}
+\begin{deriv}[{(a) $\Prob(W_2<0\mid W_1>0)$ (worked here; the slide only poses it)}]
+\vspace{-6pt}
+\begin{align*}
+\Prob(W_2<0\mid W_1>0)&=\frac{\Prob(W_1>0,\ W_1+Y<0)}{\Prob(W_1>0)} && \why{conditional probability}\\
+\Prob(W_1>0,\ Y<-W_1)&=\tfrac{45^\circ}{360^\circ}=\tfrac18 && \why{wedge, see below}\\
+\Prob(W_2<0\mid W_1>0)&=\frac{1/8}{1/2}=\frac14.
+\end{align*}
+The region $\{W_1>0,\ Y<-W_1\}$ in the $(W_1,Y)$ plane is the wedge between the negative $Y$-axis and the ray $Y=-W_1$ ($W_1>0$): a $45^\circ$ angle. The joint density of two independent standard normals is rotationally symmetric, so probability $=$ angle$/360^\circ$.
+\end{deriv}
+\begin{deriv}[{(b) $\Prob(W_1W_2>0)$}]
+Same sign means not (sign change). The two sign-change events $\{W_1>0,W_2<0\}$ and its mirror $\{W_1<0,W_2>0\}$ (reflection symmetry) each have probability $\frac18$:
+\[\Prob(W_1W_2>0)=1-\tfrac18-\tfrac18=\tfrac34.\]
+General \beyond: $\Prob(W_sW_t>0)=\frac12+\frac1\pi\arcsin\sqrt{s/t}$; for $s=1$, $t=2$: $\frac12+\frac1\pi\cdot\frac\pi4=\frac34$ \checkmark.
+\end{deriv}
+
+\subsection{Markov property [S16]}
+\begin{idea}
+A Markov process has no memory beyond its current value: knowing the whole history tells you nothing more about the future than knowing where you are now. Brownian motion is Markov because the future is ``current value $+$ an increment that is independent of the past''. This is why option prices in Black--Scholes depend on the current $S_t$ only, not on how it got there.
+\end{idea}
+\[\E_t[X_T]=\E[X_T\mid X_t,X_{t-1},X_{t-2},\dots,X_0]=\E[X_T\mid X_t].\]
+\begin{deriv}[{Brownian motion is Markov {[S16]} ($0<s<t$)}]
+\vspace{-6pt}
+\begin{align*}
+\E_s[W_t]&=\E_s[W_t-W_s+W_s] && \why{add and subtract $W_s$}\\
+&=\E_s[W_t-W_s]+\E_s[W_s] && \why{linearity}\\
+&=0+W_s=W_s && \why{increment independent, mean 0; $W_s$ known}
+\end{align*}
+Only $W_s$ appears: to predict $W_t$ you need only the present value. All independent-increment processes are Markov.
+\end{deriv}
+\begin{exam}
+\flag{} [S16] states the Markov property with conditional expectations; the property is about the whole conditional \emph{distribution} (must hold for $\E[g(X_T)\mid\cdot]$ for every $g$). The expectation version is a consequence.
+\end{exam}
+
+\subsection{Geometric Brownian motion [S17]}
+\begin{idea}
+Exponentiate a Brownian motion and you get a process that is always positive and moves in percentage terms: \textbf{geometric Brownian motion}, the Black--Scholes model of a stock. Expectations of $e^{\theta W_T}$ are just the normal MGF with variance $T$. Note $\E[e^{W_T}]=e^{T/2}$ grows even though $\E[W_T]=0$: convexity again.
+\end{idea}
+\[X_t=e^{W_t}\qquad\text{(full model \beyond: }S_t=S_0e^{(\mu-\frac12\sigma^2)t+\sigma W_t}\text{)}.\]
+\begin{deriv}[{Slide example {[S17]} (worked here): $W_T\sim\N(0,T)$, $\E[e^{\theta W_T}]=e^{\frac12\theta^2T}$}]
+\vspace{-6pt}
+\begin{align*}
+\E[X_T]&=\E[e^{1\cdot W_T}]=e^{\frac12\cdot1^2\cdot T}=e^{T/2} && \why{MGF at $\theta=1$}\\
+\E[X_T^2]&=\E[e^{2W_T}]=e^{\frac12\cdot4\cdot T}=e^{2T} && \why{$X_T^2=e^{2W_T}$, $\theta=2$}\\
+V[X_T]&=e^{2T}-e^{T} && \why{\beyond}
+\end{align*}
+\end{deriv}
+
+\subsection{Path properties [S18--S20]}
+\begin{idea}
+Zoom into a smooth curve and it looks like a straight line (that is what having a derivative means). Zoom into a Brownian path and it looks just as rough as before: it is self-similar. The reason is the $\sqrt{\Delta t}$ scaling: over a tiny interval $h$ the move is of size $\sqrt h$, which is much larger than $h$, so the slope $\sqrt h/h=1/\sqrt h$ blows up.
+\end{idea}
+\begin{itemize}
+\item \textbf{Nowhere differentiable [S18--S19]:} continuous everywhere, differentiable nowhere. Heuristic \beyond: $\frac{W_{t+h}-W_t}{h}\sim\N(0,1/h)$, whose variance explodes as $h\to0$.
+\item \textbf{Self-similar / fractal [S18--S19]:} looks the same at every scale. \beyond: $\frac{1}{\sqrt c}W_{ct}$ is again a Brownian motion for any $c>0$.
+\item \textbf{Recurrence [S19]:} hits every real value eventually (w.p.\ 1), returns to zero however far it wanders, and once it hits a value it hits it again infinitely often.
+\item \textbf{Reflection [S20]:} $W_t\mapsto-W_t$ is again a Brownian motion, because each increment's distribution $\N(0,t-s)$ is symmetric about $0$.
+\end{itemize}
+\begin{deriv}[{Why scaling and reflection preserve Brownian motion \beyond{} (check the four properties)}]
+For $B_t=\frac{1}{\sqrt c}W_{ct}$: $B_0=0$; continuous; increments $B_t-B_s=\frac{1}{\sqrt c}(W_{ct}-W_{cs})$ are built from non-overlapping increments of $W$, hence independent; and $V[B_t-B_s]=\frac1c\cdot c(t-s)=t-s$. For $-W_t$: same, with $V[-(W_t-W_s)]=t-s$ and symmetry of the normal.
+\end{deriv}
+
+\subsection{Brownian martingales [S21--S23]}
+\begin{idea}
+A martingale is a ``fair game'': given everything known today, the expected future value is today's value. To check, always use the same trick: split $W_t=(W_t-W_s)+W_s$, expand, then use two facts: the increment is independent of the past (so its conditional moments are ordinary moments: mean $0$, second moment $t-s$, third moment $0$), and $W_s$ is known (so it comes out). If the result contains anything besides the original expression at time $s$, the leftover is a drift and you can often subtract it to make a martingale (a ``compensator'').
+\end{idea}
+\textbf{Definition [S21]:}\quad $M_t=\E_t[M_T]$ for all $T\ge t$ (\beyond: also $\E|M_t|<\infty$ and $M_t$ known at $t$).
+\begin{deriv}[{$W_t$ is a martingale {[S21]}}]
+$\E_s[W_t]=\E_s[W_t-W_s]+\E_s[W_s]=0+W_s=W_s$ \quad (same computation as Markov).
+\end{deriv}
+\begin{deriv}[{$W_t^2-t$ is a martingale {[S22]} (the slide skips the middle steps)}]
+\vspace{-6pt}
+\begin{align*}
+\E_s[W_t^2-t]&=\E_s\big[(W_t-W_s+W_s)^2\big]-t && \why{split; $t$ is not random}\\
+&=\E_s\big[(W_t-W_s)^2+2W_s(W_t-W_s)+W_s^2\big]-t && \why{expand}\\
+&=\underbrace{\E[(W_t-W_s)^2]}_{t-s}+2W_s\underbrace{\E[W_t-W_s]}_{0}+W_s^2-t && \why{independence; $W_s$ known}\\
+&=W_s^2-s && \why{$t-s-t=-s$}
+\end{align*}
+Without the $-t$, $\E_s[W_t^2]=W_s^2+(t-s)$: $W_t^2$ drifts up at rate 1. Subtracting $t$ removes exactly that drift.
+\end{deriv}
+\begin{deriv}[{$W_t^3$ is not a martingale {[S23]}}]
+\vspace{-6pt}
+\begin{align*}
+\E_s[W_t^3]&=\E_s\big[(W_t-W_s+W_s)^3\big] && \why{split}\\
+&=\E_s\big[(W_t-W_s)^3+3(W_t-W_s)^2W_s+3(W_t-W_s)W_s^2+W_s^3\big] && \why{binomial expansion}\\
+&=\underbrace{\E[(W_t-W_s)^3]}_{0}+3W_s\underbrace{\E[(W_t-W_s)^2]}_{t-s}+3W_s^2\underbrace{\E[W_t-W_s]}_0+W_s^3 && \why{odd moments of $\N(0,\cdot)$ vanish}\\
+&=W_s^3+3(t-s)W_s\ \ne\ W_s^3
+\end{align*}
+\beyond{} Compensator: $\E_s[3tW_t]=3tW_s$, so $\E_s[W_t^3-3tW_t]=W_s^3+3(t-s)W_s-3tW_s=W_s^3-3sW_s$: $W_t^3-3tW_t$ is a martingale.
+\end{deriv}
+\begin{exam}
+\flag{} [S23] concludes that $W_t^3$ ``doesn't satisfy the definition of a standard Brownian motion''; it should say \emph{of a martingale}. Exam pattern: ``show $f(W_t,t)$ is (not) a martingale'' $\Rightarrow$ split, expand, use moments of $\N(0,t-s)$: $0,\ t-s,\ 0,\ 3(t-s)^2$.
+\end{exam}
+
+\subsection{Exponential martingale [S24--S25]}
+\begin{idea}
+$e^{\sigma W_t}$ grows on average (convexity), at the rate $e^{\frac12\sigma^2t}$ given by the MGF. Divide by exactly that growth and what is left is a martingale: $e^{\sigma W_t-\frac12\sigma^2t}$. This is the continuous-time version of ``discounted prices are $\Q$-martingales'': the discounted Black--Scholes stock is $e^{-rt}S_t=S_0e^{\sigma W_t-\frac12\sigma^2t}$. It is also the Radon--Nikodym density used in Girsanov's theorem (Session 7).
+\end{idea}
+\textbf{MGF recap [S24]:}\quad $X\sim\N(\mu,\sigma^2)$: $\E[e^{\theta X}]=e^{\mu\theta+\frac12\sigma^2\theta^2}$; $\ Z\sim\N(0,1)$: $\E[e^{\theta Z}]=e^{\frac12\theta^2}$.
+\begin{deriv}[{Slide example {[S24]} (worked here): $\E[e^{\sigma W_t}]$}]
+$W_t\sim\N(0,t)$, so use the MGF with $\mu=0$, variance $t$, $\theta=\sigma$: $\E[e^{\sigma W_t}]=e^{0+\frac12t\sigma^2}=e^{\frac12\sigma^2t}$. (Equivalently $W_t=\sqrt tZ$, $\E[e^{\sigma\sqrt tZ}]=e^{\frac12\sigma^2t}$.)
+\end{deriv}
+\begin{deriv}[{$\exp(\sigma W_t-\frac12\sigma^2t)$ is a martingale {[S25]}}]
+\vspace{-6pt}
+\begin{align*}
+\E_s\big[e^{\sigma W_t-\frac12\sigma^2t}\big]&=\E_s\big[e^{\sigma(W_t-W_s)}\cdot e^{\sigma W_s-\frac12\sigma^2t}\big] && \why{$W_t=(W_t-W_s)+W_s$}\\
+&=e^{\sigma W_s-\frac12\sigma^2t}\cdot\E_s\big[e^{\sigma(W_t-W_s)}\big] && \why{known factor out}\\
+&=e^{\sigma W_s-\frac12\sigma^2t}\cdot e^{\frac12\sigma^2(t-s)} && \why{MGF of $\N(0,t-s)$}\\
+&=e^{\sigma W_s-\frac12\sigma^2s} && \why{exponents: $-\tfrac12\sigma^2t+\tfrac12\sigma^2(t-s)$}
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$e^{\sigma(W_t-W_s)}$}{the future part: depends only on the increment, independent of the past.}
+\w{$-\frac12\sigma^2t$}{compensator: exactly cancels the convexity growth $e^{\frac12\sigma^2t}$, leaving no drift.}
+\end{where}
+
+\subsection{Implementation \beyond{} (tested)}
+\begin{lstlisting}[language=Python]
+import numpy as np
+rng = np.random.default_rng(0)
+n = 2_000_000
+W1 = rng.standard_normal(n)
+W2 = W1 + rng.standard_normal(n)              # W2 - W1 ~ N(0,1), independent of W1
+print(round(np.mean(W2[W1 > 0] < 0), 3))      # P(W2<0 | W1>0) = 0.25
+print(round(np.mean(W1*W2 > 0), 3))           # P(W1 W2 > 0)   = 0.75
+T = 1.0
+WT = np.sqrt(T) * rng.standard_normal(n)
+print(round(np.mean(np.exp(WT)), 3), round(np.exp(T/2), 3))      # 1.649 1.649
+print(round(np.mean(np.exp(2*WT)), 2), round(np.exp(2*T), 2))    # 7.41 7.39 (MC noise)
+\end{lstlisting}
+
+\section{Comparison tables}
+\subsection{Brownian motion vs $\sqrt t\,Z$ [S12--S13]}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Brownian motion $W_t$ & $X_t=\sqrt tZ$\\\midrule
+Marginal at $t$ & $\N(0,t)$ & $\N(0,t)$\\
+Increment over $[s,s+t]$ & $\N(0,t)$ & $\N(0,(\sqrt{s+t}-\sqrt s)^2)$\\
+Increment vs past & independent & perfectly correlated\\
+Paths & rough, nowhere differentiable & smooth curves\\
+Brownian motion? & yes & no\\\bottomrule
+\end{tabularx}}
+\subsection{Random walk vs Brownian motion}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Scaled random walk $W_n(t)$ & Brownian motion $W_t$\\\midrule
+Time & discrete, step $t/n$ & continuous\\
+Step & $\pm\sqrt{t/n}$, probability $\frac12$ & $\dd W_t$, infinitesimal\\
+Distribution at $t$ & scaled binomial, mean 0, var $t$ & $\N(0,t)$ exactly\\
+Increments & independent & independent, stationary, normal\\
+Link & \multicolumn{2}{l}{$W_n(t)\to W_t$ as $n\to\infty$ (CLT)}\\\bottomrule
+\end{tabularx}}
+\subsection{Martingale or not?}
+{\small\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Process & $\E_s[\cdot]$ & Martingale?\\\midrule
+$W_t$ & $W_s$ & yes [S21]\\
+$W_t^2$ & $W_s^2+(t-s)$ & no (drift $+1$)\\
+$W_t^2-t$ & $W_s^2-s$ & yes [S22]\\
+$W_t^3$ & $W_s^3+3(t-s)W_s$ & no [S23]\\
+$W_t^3-3tW_t$ & $W_s^3-3sW_s$ & yes \beyond\\
+$e^{\sigma W_t}$ & $e^{\sigma W_s+\frac12\sigma^2(t-s)}$ & no\\
+$e^{\sigma W_t-\frac12\sigma^2t}$ & $e^{\sigma W_s-\frac12\sigma^2s}$ & yes [S25]\\\bottomrule
+\end{tabularx}}
+\subsection{Path properties}
+{\small\begin{tabularx}{\linewidth}{@{}l X@{}}\toprule
+Continuity & continuous everywhere [S11, S19]\\
+Differentiability & nowhere differentiable [S18--S19]\\
+Scale & self-similar, fractal [S19]\\
+Recurrence & hits every level; returns to 0 infinitely often [S19]\\
+Invariance & reflection $-W_t$ [S20]; scaling $c^{-1/2}W_{ct}$ \beyond\\\bottomrule
+\end{tabularx}}
+
+\section{Master formula sheet}
+\textbf{Random walk and limit [S2, S9--S10]:} $W_n(\frac int)=W_n(\frac{i-1}nt)+\sqrt{t/n}X_i$; $W_n(t)=\sqrt t\frac{\sum X_i}{\sqrt n}\to\N(0,t)$.
+
+\textbf{Definition and moments [S11--S14]}
+\begin{itemize}
+\item $W_0=0$; continuous; independent stationary increments; $W_t-W_s\sim\N(0,t-s)$.
+\item $\E[W_t]=0$, $\E[W_t^2]=t$, $V[W_t-W_s]=t-s$, $\mathrm{Cov}(W_s,W_t)=\min(s,t)$, $\rho=\sqrt{s/t}$.
+\end{itemize}
+\textbf{Probabilities [S15]:} $\Prob(W_2<0\mid W_1>0)=\frac14$; $\Prob(W_1W_2>0)=\frac34$; $\Prob(W_sW_t>0)=\frac12+\frac1\pi\arcsin\sqrt{s/t}$ \beyond.
+
+\textbf{Markov and martingales [S16, S21--S25]}
+\begin{itemize}
+\item Markov: $\E_t[X_T]=\E[X_T\mid X_t]$; $\E_s[W_t]=W_s$.
+\item Martingale: $M_t=\E_t[M_T]$. Martingales: $W_t$, $W_t^2-t$, $e^{\sigma W_t-\frac12\sigma^2t}$. Not: $W_t^3$.
+\end{itemize}
+\textbf{Exponentials [S17, S24]:} $\E[e^{\sigma W_t}]=e^{\frac12\sigma^2t}$; $\E[e^{W_T}]=e^{T/2}$, $\E[e^{2W_T}]=e^{2T}$.
+
+\section{Glossary}
+\begin{itemize}
+\item \textbf{Brownian motion / Wiener process:} continuous process, $W_0=0$, independent $\N(0,t-s)$ increments [S11].
+\item \textbf{Exponential martingale:} $e^{\sigma W_t-\frac12\sigma^2t}$ [S25]. \quad \textbf{Fractal / self-similar:} statistically the same at every scale [S19].
+\item \textbf{Geometric Brownian motion:} exponential of a Brownian motion; Black--Scholes price model [S17].
+\item \textbf{Independent / stationary increments:} increments over disjoint intervals independent / distribution depends only on interval length [S11].
+\item \textbf{Jointly normal:} any vector of $W_{t_i}$ is multivariate normal [S14].
+\item \textbf{Markov property:} the future depends on the past only through the present [S16]. \quad \textbf{Martingale:} $M_t=\E_t[M_T]$ [S21].
+\item \textbf{Recurrence:} returns to every level infinitely often [S19]. \quad \textbf{Reflection invariance:} $-W_t$ is a Brownian motion [S20].
+\item \textbf{Scaled random walk:} steps $\pm\sqrt{t/n}$ every $t/n$ [S9].
+\end{itemize}
+
+\section{Self-test}
+\subsection*{Questions}
+\addcontentsline{toc}{subsection}{Questions}
+\begin{enumerate}[label=Q\arabic*.]
+\item ([S2]) For a 4-step symmetric random walk, give the distribution, mean and variance of $S_4$.
+\item ([S9--S10]) Why are the scaled walk's jumps $\pm\sqrt{t/n}$ and not $\pm t/n$?
+\item ([S11]) State the four defining properties of Brownian motion.
+\item ([S12]) Is $X_t=\sqrt tZ$ a Brownian motion? Is $-W_t$? Is $\frac1{\sqrt c}W_{ct}$?
+\item ([S14]) Show $\mathrm{Cov}(W_s,W_t)=s$ for $s<t$ and write the covariance matrix of $(W_1,W_2,W_3)$.
+\item ([S15]) Find $\Prob(W_2<0\mid W_1>0)$ and $\Prob(W_1W_2>0)$.
+\item ([S17]) For $X_t=e^{W_t}$ find $\E[X_T]$, $\E[X_T^2]$, $V[X_T]$.
+\item ([S21--S23]) Show $W_t$ and $W_t^2-t$ are martingales and $W_t^3$ is not. Find the compensated martingale built from $W_t^3$.
+\item ([S24--S25]) Find $\E[e^{\sigma W_t}]$ and show $e^{\sigma W_t-\frac12\sigma^2t}$ is a martingale.
+\item ([S16]) What is the Markov property and why does Brownian motion have it?
+\end{enumerate}
+\subsection*{Solutions}
+\addcontentsline{toc}{subsection}{Solutions}
+\begin{enumerate}[label=S\arabic*.]
+\item $S_4=2B-4$, $B\sim\mathrm{Bin}(4,\frac12)$: $\Prob(S_4=-4,\dots,4)=\frac1{16},\frac4{16},\frac6{16},\frac4{16},\frac1{16}$. Mean 0, variance 4.
+\item Variance of the sum is $n\times(\text{jump})^2$; with $\sqrt{t/n}$ this is $t$. With $t/n$ it would be $t^2/n\to0$.
+\item $W_0=0$; continuous paths; stationary, independent increments; $W_t-W_s\sim\N(0,t-s)$.
+\item $\sqrt tZ$: no (wrong increment variance, increments not independent). $-W_t$: yes. $c^{-1/2}W_{ct}$: yes; increments $\N(0,\frac{c(t-s)}{c})$, independent.
+\item $\E[W_sW_t]=\E[W_s(W_t-W_s)]+\E[W_s^2]=0+s$. $\Sigma=\begin{pmatrix}1&1&1\\1&2&2\\1&2&3\end{pmatrix}$.
+\item $W_2=W_1+Y$; region $\{W_1>0,Y<-W_1\}$ is a $45^\circ$ wedge: $\frac18$. Conditional $\frac{1/8}{1/2}=\frac14$. Same sign $1-2\cdot\frac18=\frac34$.
+\item $e^{T/2}$, $e^{2T}$, $e^{2T}-e^T$.
+\item See 1.11. $\E_s[W_t^3]=W_s^3+3(t-s)W_s$; $\E_s[3tW_t]=3tW_s$, so $W_t^3-3tW_t$ is a martingale.
+\item $e^{\frac12\sigma^2t}$. Split off the increment, pull out the known factor, MGF of $W_t-W_s$: get $e^{\sigma W_s-\frac12\sigma^2s}$.
+\item The conditional distribution of the future depends only on the present value. $W_t=W_s+(W_t-W_s)$ and the increment is independent of the whole past, so only $W_s$ matters.
+\end{enumerate}
+
+\section*{Appendix A. Slide coverage checklist}
+\addcontentsline{toc}{section}{Appendix A. Slide coverage checklist}
+{\small\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Slide & Content & Section\\\midrule
+S2 & 4-step symmetric random walk & 1.1\\
+S3--S8 & Brown, Einstein, Bachelier; BM as infinitesimal random walk & 1.2\\
+S9--S10 & Scaled random walk; CLT limit; independent increments & 1.3\\
+S11 & Mathematical definition & 1.4\\
+S12--S13 & $\sqrt tZ$ is not BM; marginals vs increments & 1.5\\
+S14 & Moments, covariance, joint normality & 1.6\\
+S15 & Probability examples & 1.7\\
+S16 & Markov property & 1.8\\
+S17 & Geometric Brownian motion; example & 1.9\\
+S18--S20 & Differentiability, fractal, recurrence, reflection & 1.10\\
+S21--S23 & Martingale definition; $W_t$, $W_t^2-t$, $W_t^3$ & 1.11\\
+S24--S25 & MGF; $\E[e^{\sigma W_t}]$; exponential martingale & 1.12\\\bottomrule
+\end{tabularx}}
+
+\section*{Appendix B. Flag summary (\flag)}
+\addcontentsline{toc}{section}{Appendix B. Flag summary}
+\begin{enumerate}
+\item {}[S2] $S_4\sim\mathrm{Bin}(4,0.5)$: the number of ups is binomial; $S_4=2B-4$.
+\item {}[S11] ``Weiner'' should be Wiener.
+\item {}[S16] The Markov property concerns conditional distributions; the expectation form is a consequence.
+\item {}[S21] The martingale definition also needs integrability and adaptedness (standard, omitted).
+\item {}[S23] ``doesn't satisfy the definition of a standard Brownian motion'' should read ``of a martingale''.
+\item {}[S15, S17, S24] Examples posed without worked answers; the solutions here are my own.
+\end{enumerate}
+\end{document}

@@ -1,0 +1,393 @@
+\documentclass[10pt]{article}
+\newcommand{\sessnum}{6}
+\newcommand{\sesstitle}{Valuation Framework and Stochastic Volatility}
+\usepackage{qf620style}
+\begin{document}
+\begin{center}
+{\LARGE\bfseries QF620 Stochastic Modelling in Finance --- Session 6\\[2pt] Reference Cheatsheet}\\[6pt]
+{\large Valuation Framework and Stochastic Volatility Models: pricing vs reporting models, implied volatility and the smile, displaced diffusion, stochastic volatility, Heston, SABR}\\[4pt]
+{\small Built from Session 6 slides (Tee Chyng Wen, SMU) $\cdot$ October 2026 $\cdot$ revised edition with intuition and full slide derivations}
+\end{center}
+\tableofcontents
+\vspace{4pt}
+\textbf{Source:} ``Session 6: Valuation Framework and Stochastic Volatility Models'' (Tee Chyng Wen, SMU, 20 slides).
+
+\legend
+
+\textbf{What you must be able to do after this session:} distinguish pricing and reporting models; define implied volatility and explain the smile and its history; explain why one-parameter models cannot fit the smile; solve the displaced-diffusion SDE and price it with the Black formula (and know its $\beta\to0,1$ limits); solve the lognormal volatility SDE; write the Heston and SABR SDEs and say what each parameter does.
+
+\section*{Notation used throughout (slide conventions)}
+\addcontentsline{toc}{section}{Notation used throughout (slide conventions)}
+{\small\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Symbol & Meaning & Notes\\\midrule
+$S,\ F_t,\ F_0$ & spot; forward price (driftless under the pricing measure); today's forward & [S10]\\
+$K,\ T,\ r$ & strike; expiry; rate & \\
+$\sigma_K$ & implied volatility at strike $K$ & [S4]\\
+$\sigma_{LN},\ \sigma_N$ & lognormal (Black--Scholes) / normal (Bachelier) volatility & [S8]\\
+$\beta$ & displaced-diffusion mix (DD) or CEV exponent (SABR), $\in[0,1]$ & [S10, S17]\\
+$W^*_t$ & Brownian motion under the pricing measure & [S12]\\
+$\nu$ & volatility of volatility & [S15]\\
+$\sigma_t,\ \alpha_t$ & stochastic volatility & [S15, S17]\\
+$V_t$; $\kappa,\theta$ & instantaneous variance (Heston); reversion speed, long-run variance & [S16]\\
+$\rho$ & correlation between price and vol Brownian motions & [S16--S17]\\
+$\sigma_{SABR}$ & SABR (Black) implied volatility & [S18]\\
+$\mathrm{BlackCall}(F,K,\sigma,T)$ & Black (forward) call formula & [S11]\\\bottomrule
+\end{tabularx}}
+
+\textbf{Notation trap:} $\beta$ means two things: the DD weight on the lognormal part [S10] and the SABR backbone exponent $F^\beta$ [S17]. In both, $\beta=1$ is lognormal and $\beta=0$ is normal. $\nu$ is vol-of-vol; $V_t$ is a variance (Heston); $\sigma_t,\alpha_t$ are volatilities.
+
+\section*{0. Topic map}
+\addcontentsline{toc}{section}{0. Topic map}
+\begin{lstlisting}
+PREREQUISITES: S5 Bachelier and Black–Scholes calls, solving SDEs with Itô ; S4 dW dW = dt
+    ▼
+SESSION 6
+├─ REPORTING [S2–S3]
+│     ├─ pricing models: price & hedge ; realistic dynamics ; accurate Greeks    [S2]
+│     └─ reporting models: market price ↔ implied vol, simple formula            [S3]
+├─ SMILE [S4–S7]
+│     ├─ implied vol σ_K: BS(S, K, r, σ_K, T) = market price                     [S4]
+│     └─ flat before 1987, skewed after ; steeper for short expiries            [S5–S7]
+├─ EXTENSIONS TO BLACK–SCHOLES [S8–S9]
+│     └─ one parameter fits ATM only ; market between normal and lognormal       [S8–S9]
+├─ DISPLACED DIFFUSION [S10–S14]
+│     ├─ dF = σ[βF + (1−β)F₀]dW ; solution via log                              [S10]
+│     ├─ price = Black(F₀/β, K + (1−β)F₀/β, σβ, T)                               [S11–S12]
+│     └─ better fit, not exact ; returns show volatility clustering             [S13–S14]
+└─ STOCHASTIC VOLATILITY / SABR [S15–S20]
+      ├─ dσ = νσdW^σ ⇒ σ_T = σ₀exp(−½ν²T + νW_T^σ)                               [S15]
+      ├─ Heston: √V, mean-reverting variance, ρ                                  [S16]
+      ├─ SABR: dF = αF^β dW^F, dα = να dW^α, ρ ; Hagan's σ_SABR → Black          [S17–S18]
+      └─ DD lacks degrees of freedom ; SABR fits the smile                       [S19–S20]
+\end{lstlisting}
+\textbf{The storyline of the session.}
+\begin{itemize}
+\item Market option prices are set by supply and demand. The Black--Scholes formula is used \emph{backwards}, as a reporting tool, to turn each price into an implied volatility.
+\item If Black--Scholes were right, implied vol would be flat across strikes. Since 1987 it is not (the \textbf{smile/skew}). So a pricing model needs more freedom than one $\sigma$.
+\item \textbf{Displaced diffusion} interpolates between normal and lognormal with one extra parameter $\beta$, and is still priced with the Black formula. It tilts the skew but cannot bend it.
+\item Real returns show \textbf{volatility clustering}, so make volatility itself random. Vol-of-vol $\nu$ adds curvature, correlation $\rho$ adds skew. SABR has a closed-form implied vol, hence it is fast and popular; Heston needs a numerical integral.
+\end{itemize}
+
+\section{Concept entries}
+
+\subsection{Pricing models vs reporting models [S2--S3]}
+\begin{idea}
+Two different jobs. A \textbf{pricing model} is what a desk uses to value and hedge its book: its dynamics should be realistic and its Greeks accurate, and its parameters are calibrated to liquid options. A \textbf{reporting model} is just a units converter: exchanges and brokers quote options as implied vols instead of prices, and need a simple closed-form formula (Black--Scholes or Bachelier) to convert one into the other. The reporting model does not need to be ``true''.
+\end{idea}
+\textbf{Pricing models [S2]:} dynamics conform to intuition about the underlying; Greeks capture sensitivities accurately; each desk has its own, calibrated to liquid option markets.
+
+\textbf{Reporting models [S3]:} report market prices (driven by supply and demand) as implied volatilities; make simplifying assumptions to get an analytic price--vol conversion; their parameters are displayed on brokers' screens.
+
+\textbf{Slide question [S3]: why quote vols, not prices?} (answered here) Implied vol strips out spot, strike, expiry and rates, so options on different strikes, maturities and underlyings are comparable on one scale; it changes much less than the price when spot moves; and it is what traders actually have views on.
+
+\subsection{Implied volatility [S4]}
+\begin{idea}
+Take the market price of one option and ask: which $\sigma$ in Black--Scholes reproduces it? That number is the implied volatility. Each strike gets its own. It is solved numerically, but it always exists and is unique because the Black--Scholes price strictly increases with $\sigma$ (more volatility $=$ more optionality).
+\end{idea}
+\[C^{\text{mkt}}(K_i)=\mathrm{BlackScholes}(S,K_i,r,\sigma_{K_i},T),\qquad i=1,2,3,\dots\]
+\begin{where}
+\w{$C^{\text{mkt}}(K_i)$}{observed market price of the call (or put $P(K_i)$) with strike $K_i$.}
+\w{$\sigma_{K_i}$}{implied vol for strike $K_i$: solved numerically (no closed-form inverse); one per strike.}
+\end{where}
+\begin{deriv}[{Why it is unique, and calls and puts agree \beyond}]
+Vega $=\frac{\partial C}{\partial\sigma}=S\phi(d_1)\sqrt T>0$, so the price is strictly increasing in $\sigma$ and the root of $C(\sigma)=C^{\text{mkt}}$ is unique. By put--call parity $C-P=S-Ke^{-rT}$, which does not depend on $\sigma$; so if $\sigma$ matches the call it also matches the put with the same strike and expiry.
+\end{deriv}
+
+\subsection{The volatility smile [S5--S7]}
+\begin{idea}
+Plot implied vol against strike. Under Black--Scholes it is a flat line. In equity markets after the 1987 crash it slopes down: low strikes (OTM puts) are priced at higher vols. Reason: the market discovered that 20\% one-day crashes happen, so it pays up for downside protection. Equivalent statement: the market's risk-neutral distribution has a fatter left tail than the lognormal (negative skew, excess kurtosis --- Session 1's $\gamma_3,\gamma_4$). Short expiries show the steepest smile because a sudden jump matters most over a short horizon.
+\end{idea}
+\begin{itemize}
+\item Black--Scholes assumes one constant volatility, independent of strike and expiry $\Rightarrow$ flat implied vol [S5--S6].
+\item Before Black Monday (October 1987) the index smile was roughly flat; afterwards a distinct smile/skew appeared across many markets: a 20\%+ drop in a short time was shown to be possible [S5--S6].
+\item Prices come from supply and demand, not a model; higher implied vols for low strikes reflect demand for protection against large down moves [S6].
+\item The smile is steepest for short expiries, flatter for long ones [S7]. The market trades mostly OTM and ATM options; ITM ones are less liquid, so for equity indices there is heavy demand for OTM puts [S7].
+\end{itemize}
+
+\subsection{Fitting market prices with one-parameter models [S8--S9]}
+\begin{idea}
+Black--Scholes and Bachelier each have one volatility number. Fit it to the most important option (ATM) and you are stuck with whatever shape the model implies elsewhere: Black--Scholes gives a flat line in implied vol; Bachelier gives a fixed downward slope. Why downward: a normal model has the same \emph{absolute} move size at every level, so measured in \emph{percentage} terms the move is bigger at low strikes, i.e.\ higher lognormal vol. The market sits between the two.
+\end{idea}
+\[\text{model price}(K_i)=\mathrm{BlackScholes}(S,K_i,\sigma_{LN},T)\quad\text{or}\quad\mathrm{Bachelier}(S,K_i,\sigma_N,T).\]
+\begin{where}
+\w{$\sigma_{LN}$}{one lognormal (percentage) vol for all strikes.}
+\w{$\sigma_N$}{one normal (price-unit) vol for all strikes; to match ATM, $\sigma_N\approx\sigma_{LN}S$ \beyond.}
+\end{where}
+\textbf{Google example [S9]:} options on 2013-08-30 expiring 2015-01-17 ($T\approx1.38$), spot 846.9, ATM vol $\approx0.26$. Converted to Black implied vols: lognormal model flat at 0.26; normal model downward-sloping (\beyond: about 0.37 at $K=400$, 0.26 ATM, 0.20 at $K=1400$); market in between, with some upturn at high strikes.
+\begin{deriv}[{Heuristic for the Bachelier skew \beyond}]
+Local percentage volatility of $\dd F=\sigma_N\dd W$ at level $F$ is $\sigma_N/F$. Near strike $K$ the option ``feels'' the volatility around $K$, so roughly $\sigma_{\text{impl}}(K)\approx\sigma_N/\frac{F_0+K}{2}$: larger for $K<F_0$, smaller for $K>F_0$.
+\end{deriv}
+
+\subsection{Displaced-diffusion model: SDE and solution [S10]}
+\begin{idea}
+Blend the two: the noise is a weighted mix of a lognormal piece ($\propto F_t$) and a normal piece (a constant, frozen at $F_0$). $\beta=1$ is pure Black, $\beta=0$ pure Bachelier; in between gives an intermediate skew. To solve it, notice that the quantity $\beta F_t+(1-\beta)F_0$ itself follows a GBM (its noise is proportional to itself), so take its log, exactly as for Black--Scholes. The result is a \textbf{shifted lognormal}: a lognormal variable minus a constant.
+\end{idea}
+\[\dd F_t=\sigma\big[\beta F_t+(1-\beta)F_0\big]\dd W_t,\qquad\beta\in[0,1].\]
+\begin{where}
+\w{$F_t$}{forward price, driftless under the pricing measure; $F_0$ is a fixed constant.}
+\w{$\beta F_t$}{lognormal (geometric) part: noise proportional to the level.}
+\w{$(1-\beta)F_0$}{normal (arithmetic) part: noise of fixed size.}
+\w{$\sigma$}{at $t=0$ the local volatility is $\sigma F_0$, same as Black's.}
+\end{where}
+\begin{deriv}[{Solving via It\^o (the slide gives only the answer)}]
+Let $Y_t=\beta F_t+(1-\beta)F_0$. Then $\dd Y_t=\beta\dd F_t=\beta\sigma Y_t\dd W_t$: a driftless GBM with vol $\beta\sigma$. Take $X_t=f(F_t)=\log Y_t$, $f'=\frac{\beta}{Y}$, $f''=-\frac{\beta^2}{Y^2}$, $\sigma_t=\sigma Y_t$, $\mu_t=0$:
+\vspace{-4pt}
+\begin{align*}
+\dd X_t&=\Big(0+\tfrac12\sigma^2Y_t^2\cdot\Big(-\frac{\beta^2}{Y_t^2}\Big)\Big)\dd t+\sigma Y_t\cdot\frac{\beta}{Y_t}\dd W_t=-\tfrac12\beta^2\sigma^2\dd t+\beta\sigma\dd W_t && \why{It\^o}\\
+X_T&=\log F_0-\tfrac12\beta^2\sigma^2T+\beta\sigma W_T && \why{$Y_0=F_0$}\\
+\beta F_T+(1-\beta)F_0&=F_0\exp\Big(-\tfrac12\beta^2\sigma^2T+\beta\sigma W_T\Big) && \why{exponentiate}\\
+F_T&=\frac{F_0}{\beta}\exp\Big(-\frac{\beta^2\sigma^2T}{2}+\beta\sigma W_T\Big)-\frac{1-\beta}{\beta}F_0 && \why{solve for $F_T$}
+\end{align*}
+\end{deriv}
+\begin{deriv}[{Limits \beyond}]
+$\beta=1$: $F_T=F_0e^{-\frac12\sigma^2T+\sigma W_T}$ (Black). $\beta\to0$: expand $e^{x}\approx1+x$ with $x=\beta(\sigma W_T)+O(\beta^2)$: $F_T\approx\frac{F_0}{\beta}(1+\beta\sigma W_T)-\frac{F_0}{\beta}+F_0=F_0+\sigma F_0W_T$ (Bachelier with $\sigma_N=\sigma F_0$). Lower bound: $F_T>-\frac{1-\beta}{\beta}F_0$.
+\end{deriv}
+
+\subsection{Pricing displaced diffusion with the Black formula [S11--S12]}
+\begin{idea}
+Compare the two solutions side by side: the DD forward is literally a Black forward (start $F_0/\beta$, vol $\beta\sigma$) minus a constant shift. A call on ``Black forward minus shift'' with strike $K$ is the same as a call on the Black forward with strike $K+$shift. So the existing BlackCall function prices it with modified inputs; no new formula needed.
+\end{idea}
+\textbf{Slide question [S11]:} given
+\[\text{Black: }F_T=F_0e^{-\frac{\sigma^2T}{2}+\sigma W_T},\qquad\text{DD: }F_T=\frac{F_0}{\beta}e^{-\frac{\beta^2\sigma^2T}{2}+\beta\sigma W_T}-\frac{1-\beta}{\beta}F_0,\]
+can BlackCall$(F,K,\sigma,T)$ price a DD call? Yes:
+\begin{deriv}[{Moving the shift onto the strike {[S12]}}]
+\vspace{-6pt}
+\begin{align*}
+(F_T-K)^+&=\Big(\underbrace{\tfrac{F_0}{\beta}e^{-\frac12(\beta\sigma)^2T+\beta\sigma W_T}}_{\text{Black forward: start }F_0/\beta,\ \text{vol }\beta\sigma}-\Big[K+\tfrac{1-\beta}{\beta}F_0\Big]\Big)^+ && \why{group the constants}\\
+\text{DD call}&=\mathrm{Black}\Big(\frac{F_0}{\beta},\ K+\frac{1-\beta}{\beta}F_0,\ \sigma\beta,\ T\Big) && \why{same payoff, same law}
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$F_0/\beta$}{``forward'' input to Black.}
+\w{$K+\frac{1-\beta}{\beta}F_0$}{``strike'' input: real strike plus the displacement.}
+\w{$\sigma\beta$}{``volatility'' input.}
+\w{$\mathrm{Black}(F,K,\sigma,T)$}{$D[F\Phi(d_1)-K\Phi(d_2)]$, $d_{1,2}=\frac{\log(F/K)\pm\frac12\sigma^2T}{\sigma\sqrt T}$, $D$ the discount factor.}
+\end{where}
+[S12]: written with $W^*_t$, a Brownian motion under the pricing (forward) measure, so $F_t$ is driftless.
+
+\subsection{Fitting with displaced diffusion; why vol must be random [S13--S14]}
+\begin{idea}
+DD's one extra parameter $\beta$ tilts the implied-vol curve between flat (lognormal) and steep (normal), so it can match the overall slope. But it is still a \emph{local} model with deterministic volatility: it cannot produce the curvature (wings lifting on both sides). Look at real return data: periods of calm and periods of turbulence cluster together. Constant-vol models produce i.i.d.\ returns with no clustering. The natural fix is to let volatility be random.
+\end{idea}
+\begin{itemize}
+\item Choosing $\beta$ (0.2--0.8 shown) gives a closer fit than either pure model [S13].
+\item Still not accurate: DD gives a monotone skew and cannot match the curvature (upturn at high strikes) [S13].
+\item \textbf{Which returns are real? [S14]} (answered here): the series showing \emph{volatility clustering} (calm periods, turbulent periods such as 2008, big spikes, fat tails). The other has constant variance (i.i.d.\ normal), which is what Black--Scholes assumes.
+\end{itemize}
+
+\subsection{Stochastic volatility [S15]}
+\begin{idea}
+Give volatility its own SDE. The simplest choice: a driftless lognormal process, the same SDE as a GBM with zero drift. So the solution is the familiar exponential martingale: volatility stays positive, its expected value stays at $\sigma_0$, and $\nu$ (vol-of-vol) says how wildly it moves. Random vol mixes many normal distributions with different widths, and a mixture of normals has fatter tails than a single normal: that is exactly what lifts the wings of the smile.
+\end{idea}
+\[\dd\sigma_t=\nu\sigma_t\dd W^\sigma_t.\]
+\begin{where}
+\w{$\sigma_t$}{volatility at time $t$: now a random process.}
+\w{$\nu$}{volatility of volatility.}
+\w{$W^\sigma_t$}{Brownian motion driving the volatility (may be correlated with the price's).}
+\end{where}
+\begin{deriv}[{Solving the SDE {[S15]} (same as GBM with zero drift)}]
+\vspace{-6pt}
+\begin{align*}
+\dd\log\sigma_t&=\frac1{\sigma_t}\dd\sigma_t-\frac12\frac1{\sigma_t^2}(\dd\sigma_t)^2=\nu\dd W^\sigma_t-\tfrac12\nu^2\dd t && \why{It\^o on $\log$; $(\dd\sigma)^2=\nu^2\sigma^2\dd t$}\\
+\sigma_T&=\sigma_0\exp\Big(-\tfrac12\nu^2T+\nu W^\sigma_T\Big)=\sigma_0\exp\Big(-\tfrac12\nu^2T+\nu\sqrt T\,\N(0,1)\Big) && \why{integrate, exponentiate}\\
+\E[\sigma_T]&=\sigma_0e^{-\frac12\nu^2T}e^{\frac12\nu^2T}=\sigma_0 && \why{normal MGF; driftless}
+\end{align*}
+\end{deriv}
+
+\subsection{Heston model [S16]}
+\begin{idea}
+Heston (1993) models the \emph{variance} $V_t$ as a mean-reverting process (like Vasicek, Session 5) with a $\sqrt V$ in the noise (CIR), so the noise dies out as $V\to0$ and variance stays non-negative. Volatility shocks are correlated with price shocks; for equities $\rho<0$ (prices fall, vol spikes: leverage effect), which produces the downside skew. Vanilla prices need a numerical one-dimensional integral (Fourier).
+\end{idea}
+\[\begin{cases}\dd S_t=rS_t\dd t+\sqrt{V_t}S_t\dd W^S_t\\ \dd V_t=\kappa(\theta-V_t)\dd t+\nu\sqrt{V_t}\dd W^V_t\end{cases}\qquad\dd W^S_t\dd W^V_t=\rho\dd t.\]
+\begin{where}
+\w{$V_t$}{instantaneous variance; $\sqrt{V_t}$ is the volatility.}
+\w{$\kappa,\theta$}{speed of mean reversion; long-run variance.}
+\w{$\nu\sqrt{V_t}\dd W^V$}{square-root diffusion (CIR): keeps $V\ge0$.}
+\w{$\rho$}{correlation of stock and variance shocks; $\rho<0$ for equities gives the downward skew \beyond.}
+\end{where}
+Vanilla European prices: 1-d integral evaluated numerically [S16]; popular with equity desks [S16]. \beyond{} Feller condition $2\kappa\theta>\nu^2$ keeps $V_t$ strictly positive.
+
+\subsection{SABR model [S17]}
+\begin{idea}
+SABR (Hagan 2002) combines three ingredients, one per smile feature: a CEV backbone $F^\beta$ (how vol moves with the level; $\beta$ between normal and lognormal, like DD), a driftless lognormal volatility $\alpha_t$ with vol-of-vol $\nu$ (curvature), and correlation $\rho$ between forward and vol shocks (skew). Its big practical advantage: Hagan's asymptotic formula gives the Black implied vol directly, so pricing a vanilla is ``compute $\sigma_{SABR}$, plug into Black''.
+\end{idea}
+\[\begin{cases}\dd F_t=\alpha_tF_t^\beta\dd W^F_t\\ \dd\alpha_t=\nu\alpha_t\dd W^\alpha_t\end{cases}\qquad\dd W^F_t\dd W^\alpha_t=\rho\dd t.\]
+\begin{where}
+\w{$\alpha_t$}{stochastic volatility level; $\alpha_0=\alpha$ today.}
+\w{$F_t^\beta$}{backbone (CEV): $\beta=1$ lognormal, $\beta=0$ normal.}
+\w{$\nu$}{vol-of-vol: controls the smile's curvature.}
+\w{$\rho$}{correlation of forward and vol shocks: controls the skew (tilt).}
+\end{where}
+\textbf{Use [S17]:} compute $\sigma_{SABR}(F_0,K,\dots)$ and plug into Black. Much faster than Heston; used across asset classes.
+
+\subsection{Hagan's SABR implied volatility [S18]}
+\begin{align*}
+\sigma_{SABR}(F_0,K,\alpha,\beta,\rho,\nu)&=\frac{\alpha}{(F_0K)^{\frac{1-\beta}{2}}\Big\{1+\frac{(1-\beta)^2}{24}\log^2\frac{F_0}{K}+\frac{(1-\beta)^4}{1920}\log^4\frac{F_0}{K}+\cdots\Big\}}\\
+&\quad\times\frac{z}{x(z)}\times\Big\{1+\Big[\frac{(1-\beta)^2}{24}\frac{\alpha^2}{(F_0K)^{1-\beta}}+\frac14\frac{\rho\beta\nu\alpha}{(F_0K)^{\frac{1-\beta}{2}}}+\frac{2-3\rho^2}{24}\nu^2\Big]T+\cdots\Big\}
+\end{align*}
+\[z=\frac\nu\alpha(F_0K)^{\frac{1-\beta}{2}}\log\frac{F_0}{K},\qquad x(z)=\log\Big[\frac{\sqrt{1-2\rho z+z^2}+z-\rho}{1-\rho}\Big].\]
+\begin{where}
+\w{$\alpha/(F_0K)^{\frac{1-\beta}{2}}$}{converts the CEV vol $\alpha F^{\beta}$ into a lognormal vol at the geometric-mean level $\sqrt{F_0K}$ (since $\alpha F^\beta/F=\alpha F^{\beta-1}$).}
+\w{$\{1+\frac{(1-\beta)^2}{24}\log^2\cdots\}$}{backbone correction away from ATM; vanishes when $\beta=1$.}
+\w{$z/x(z)$}{stochastic-vol smile factor: depends on $\nu,\rho$; equals 1 ATM.}
+\w{$[\cdots]T$}{small time correction: backbone, correlation, vol-of-vol terms.}
+\end{where}
+\begin{deriv}[{Two sanity limits \beyond}]
+\emph{ATM} ($K=F_0$): $z\to0$; $x(z)\approx\log\frac{1-\rho+z(1-\rho)+\cdots}{1-\rho}\approx z$, so $z/x(z)\to1$ and $\sigma_{ATM}\approx\frac{\alpha}{F_0^{1-\beta}}\{1+[\cdots]T\}$ (code must treat this limit separately). \emph{$\beta=1$, $\nu\to0$}: denominator $=\alpha$, $z/x\to1$, bracket $\to1$, so $\sigma_{SABR}=\alpha$: flat Black.
+\end{deriv}
+Practice \beyond: fix $\beta$ (often 0.5 or by asset class), calibrate $\alpha,\rho,\nu$ to the market smile for each expiry. Code is in the course's Jupyter notebook [S18].
+
+\subsection{Fit comparison [S19--S20]}
+\begin{itemize}
+\item Displaced diffusion (best $\beta$) has too few degrees of freedom: it misses the low-strike steepness and the high-strike upturn [S19].
+\item SABR fits the implied volatility smile well and is quick to compute, hence popular [S20].
+\end{itemize}
+
+\subsection{Implementation \beyond{} (tested)}
+\begin{lstlisting}[language=Python]
+import numpy as np
+from scipy.stats import norm
+from scipy.optimize import brentq
+def black_call(F, K, sigma, T, D=1.0):
+    d1 = (np.log(F/K) + 0.5*sigma**2*T) / (sigma*np.sqrt(T))
+    return D*(F*norm.cdf(d1) - K*norm.cdf(d1 - sigma*np.sqrt(T)))
+def bachelier_call(F, K, sigma, T, D=1.0):
+    d = (F - K) / (sigma*np.sqrt(T))
+    return D*((F - K)*norm.cdf(d) + sigma*np.sqrt(T)*norm.pdf(d))
+def implied_vol(price, F, K, T, D=1.0):
+    return brentq(lambda s: black_call(F, K, s, T, D) - price, 1e-6, 5.0)
+def dd_call(F, K, sigma, beta, T, D=1.0):
+    """Displaced diffusion dF = sigma [beta F + (1-beta) F0] dW, priced with Black."""
+    return black_call(F/beta, K + (1-beta)/beta*F, sigma*beta, T, D)
+def sabr_vol(F, K, T, alpha, beta, rho, nu):
+    """Hagan et al. (2002) lognormal implied vol."""
+    B = lambda fk: 1 + ((1-beta)**2/24*alpha**2/fk**(1-beta)
+                        + 0.25*rho*beta*nu*alpha/fk**((1-beta)/2) + (2-3*rho**2)/24*nu**2)*T
+    if abs(F - K) < 1e-12:                       # ATM: z/x(z) -> 1
+        return alpha/F**(1-beta)*B(F*F)
+    fk, lfk = F*K, np.log(F/K)
+    z = nu/alpha*fk**((1-beta)/2)*lfk
+    xz = np.log((np.sqrt(1 - 2*rho*z + z**2) + z - rho) / (1 - rho))
+    A = alpha / (fk**((1-beta)/2)*(1 + (1-beta)**2/24*lfk**2 + (1-beta)**4/1920*lfk**4))
+    return A*(z/xz)*B(fk)
+F, T = 846.9, 1.38                                # Google example
+for K in (400, 846.9, 1400):                      # normal model -> skew in Black vols
+    print(K, round(implied_vol(bachelier_call(F, K, 0.26*F, T), F, K, T), 4))   # 0.3725 0.261 0.2006
+print(round(dd_call(F, 900, 0.26, 0.4, T), 3))    # 80.009 (Monte Carlo: 79.963 +/- 0.05)
+print(round(sabr_vol(F, 1200, T, 0.26, 1.0, 0.0, 1e-8), 6))   # 0.26: beta=1, nu->0 is flat Black
+\end{lstlisting}
+
+\section{Comparison tables}
+\subsection{Pricing vs reporting models}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Pricing model [S2] & Reporting model [S3]\\\midrule
+Purpose & price and hedge derivatives & quote market prices as vols\\
+Requirement & realistic dynamics, accurate Greeks & simple, analytic formula\\
+Parameters & calibrated to liquid options & implied vols on screens\\
+Examples & SABR, Heston, displaced diffusion & Black--Scholes, Bachelier\\\bottomrule
+\end{tabularx}}
+\subsection{Models and the smile}
+{\small\begin{tabularx}{\linewidth}{@{}l X l X@{}}\toprule
+Model & SDE & Free params & Smile in BS implied vol\\\midrule
+Black--Scholes & $\dd F=\sigma F\dd W$ & $\sigma$ & flat\\
+Bachelier & $\dd F=\sigma_N\dd W$ & $\sigma_N$ & fixed downward skew\\
+Displaced diffusion & $\dd F=\sigma[\beta F+(1-\beta)F_0]\dd W$ & $\sigma,\beta$ & adjustable skew, no curvature\\
+Heston & see 1.9 & $V_0,\kappa,\theta,\nu,\rho$ & skew and curvature; numerical integral\\
+SABR & see 1.10 & $\alpha,\beta,\rho,\nu$ & skew ($\rho,\beta$), curvature ($\nu$); closed-form vol\\\bottomrule
+\end{tabularx}}
+\subsection{What each SABR parameter does \beyond}
+{\small\begin{tabularx}{\linewidth}{@{}l X@{}}\toprule
+$\alpha$ & overall level of volatility (mainly ATM vol)\\
+$\beta$ & backbone: how ATM vol moves with $F$; usually fixed\\
+$\rho$ & skew: $\rho<0$ raises low-strike vols\\
+$\nu$ & curvature: higher $\nu$ lifts both wings\\\bottomrule
+\end{tabularx}}
+\subsection{Heston vs SABR}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Heston [S16] & SABR [S17--S18]\\\midrule
+Random quantity & variance $V_t$, mean-reverting & volatility $\alpha_t$, driftless lognormal\\
+Underlying & spot with drift $r$ & forward, driftless, CEV $F^\beta$\\
+Vanilla pricing & 1-d numerical integral & closed-form implied vol $+$ Black\\
+Speed / typical use & slower / equity desks & fast / all asset classes, esp.\ rates\\\bottomrule
+\end{tabularx}}
+
+\section{Master formula sheet}
+\begin{itemize}
+\item \textbf{Implied vol [S4]:} $C^{\text{mkt}}(K)=\mathrm{BS}(S,K,r,\sigma_K,T)$, unique since vega $>0$.
+\item \textbf{Black / Bachelier (forward form):} $D[F\Phi(d_1)-K\Phi(d_2)]$, $d_{1,2}=\frac{\log(F/K)\pm\frac12\sigma^2T}{\sigma\sqrt T}$; $D[(F-K)\Phi(d)+\sigma_N\sqrt T\phi(d)]$, $d=\frac{F-K}{\sigma_N\sqrt T}$.
+\item \textbf{Displaced diffusion [S10--S12]:} $F_T=\frac{F_0}{\beta}e^{-\frac12\beta^2\sigma^2T+\beta\sigma W_T}-\frac{1-\beta}{\beta}F_0$; call $=\mathrm{Black}\big(\frac{F_0}{\beta},K+\frac{1-\beta}{\beta}F_0,\sigma\beta,T\big)$.
+\item \textbf{Stochastic vol [S15]:} $\dd\sigma=\nu\sigma\dd W^\sigma\Rightarrow\sigma_T=\sigma_0e^{-\frac12\nu^2T+\nu W^\sigma_T}$.
+\item \textbf{Heston [S16]:} $\dd S=rS\dd t+\sqrt VS\dd W^S$, $\dd V=\kappa(\theta-V)\dd t+\nu\sqrt V\dd W^V$, $\dd W^S\dd W^V=\rho\dd t$.
+\item \textbf{SABR [S17--S18]:} $\dd F=\alpha F^\beta\dd W^F$, $\dd\alpha=\nu\alpha\dd W^\alpha$, $\rho$; price $=\mathrm{Black}(F_0,K,\sigma_{SABR},T)$.
+\end{itemize}
+
+\section{Glossary}
+\begin{itemize}
+\item \textbf{ATM / ITM / OTM:} at / in / out of the money [S7]. \quad \textbf{Backbone:} how ATM vol moves with the forward (SABR $\beta$) \beyond.
+\item \textbf{Calibration:} choosing model parameters to fit market prices [S2].
+\item \textbf{Displaced diffusion (shifted lognormal):} $\dd F=\sigma[\beta F+(1-\beta)F_0]\dd W$ [S10].
+\item \textbf{Implied volatility:} the $\sigma$ that makes Black--Scholes match a market price [S4].
+\item \textbf{Leverage effect:} negative correlation between price and volatility moves \beyond.
+\item \textbf{Pricing / reporting model:} used to price and hedge / converts prices to implied vols [S2--S3].
+\item \textbf{Skew / smile:} implied vol varying with strike [S5]. \quad \textbf{Vol-of-vol $\nu$:} volatility of the volatility process [S15].
+\item \textbf{Volatility clustering:} large moves follow large moves; calm follows calm [S14].
+\end{itemize}
+
+\section{Self-test}
+\subsection*{Questions}
+\addcontentsline{toc}{subsection}{Questions}
+\begin{enumerate}[label=Q\arabic*.]
+\item ([S2--S3]) Contrast pricing and reporting models. Why are implied vols quoted rather than prices?
+\item ([S4]) Define implied volatility. Why is it unique?
+\item ([S5--S7]) Describe the equity smile, when it appeared and why.
+\item ([S8--S9]) Why can't Black--Scholes or Bachelier fit the smile? What shape does Bachelier produce in Black implied vol?
+\item ([S10]) Solve $\dd F=\sigma[\beta F+(1-\beta)F_0]\dd W$. What are the limits $\beta=1$ and $\beta\to0$?
+\item ([S11--S12]) Price a DD call with BlackCall. Give the inputs.
+\item ([S13--S14]) Why is DD not enough, and what evidence shows vol is random?
+\item ([S15]) Solve $\dd\sigma=\nu\sigma\dd W$ and find $\E[\sigma_T]$.
+\item ([S16]) Write the Heston SDEs and explain each parameter.
+\item ([S17--S18]) Write the SABR SDEs, state what $\rho$ and $\nu$ control, and explain how SABR prices a vanilla.
+\end{enumerate}
+\subsection*{Solutions}
+\addcontentsline{toc}{subsection}{Solutions}
+\begin{enumerate}[label=S\arabic*.]
+\item See 1.1 and table 2.1. Vols normalise for spot, strike, expiry and rates, so they are comparable and more stable.
+\item The $\sigma_K$ with $\mathrm{BS}(S,K,r,\sigma_K,T)=C^{\text{mkt}}(K)$; unique because price is strictly increasing in $\sigma$.
+\item Low strikes have higher implied vol (downward skew), steeper for short expiries; appeared after the 1987 crash; demand for OTM put protection.
+\item One parameter fits only ATM. Bachelier gives Black vols falling with strike (0.37 / 0.26 / 0.20 at $K=400$ / 846.9 / 1400).
+\item See 1.5. $\beta=1$: Black. $\beta\to0$: $F_T\to F_0+\sigma F_0W_T$, Bachelier with $\sigma_N=\sigma F_0$.
+\item $\mathrm{Black}(F_0/\beta,\ K+\frac{1-\beta}{\beta}F_0,\ \sigma\beta,\ T)$.
+\item One extra parameter only tilts the skew; no curvature. Real returns show volatility clustering and fat tails.
+\item $\sigma_T=\sigma_0e^{-\frac12\nu^2T+\nu W_T}$; $\E[\sigma_T]=\sigma_0$.
+\item See 1.9.
+\item See 1.10. $\rho$ = skew; $\nu$ = curvature. Compute $\sigma_{SABR}(F_0,K)$ with Hagan's formula, then Black.
+\end{enumerate}
+
+\section*{Appendix A. Slide coverage checklist}
+\addcontentsline{toc}{section}{Appendix A. Slide coverage checklist}
+{\small\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Slide & Content & Section\\\midrule
+S2--S3 & Pricing models; reporting models & 1.1\\
+S4 & Implied volatility per strike & 1.2\\
+S5--S7 & Smile before and after 1987; demand for protection; by expiry & 1.3\\
+S8--S9 & Fitting with one vol parameter; Google example & 1.4\\
+S10 & Displaced diffusion SDE and solution & 1.5\\
+S11--S12 & Pricing DD with BlackCall & 1.6\\
+S13--S14 & DD fit; real vs simulated returns & 1.7\\
+S15 & Stochastic volatility & 1.8\\
+S16 & Heston & 1.9\\
+S17--S18 & SABR; Hagan's formula & 1.10--1.11\\
+S19--S20 & DD vs SABR fit & 1.12\\\bottomrule
+\end{tabularx}}
+
+\section*{Appendix B. Flag summary (\flag)}
+\addcontentsline{toc}{section}{Appendix B. Flag summary}
+\begin{enumerate}
+\item {}[S10, S17] $\beta$ is used for two different parameters (DD weight and SABR exponent).
+\item {}[S11--S12] The BlackCall signature omits the discount factor; multiply by $D=e^{-rT}$ when $F$ is a forward.
+\item {}[S16] Heston's $\nu$ is the volatility of variance, unlike SABR's $\nu$ (volatility of volatility).
+\item {}[S18] The formula has a removable singularity at $K=F_0$; implementations must treat ATM separately.
+\item {}[S3, S10, S11, S13, S14] Questions posed on the slides are answered here with my own working.
+\end{enumerate}
+\end{document}

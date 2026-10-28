@@ -1,0 +1,504 @@
+\documentclass[10pt]{article}
+\newcommand{\sessnum}{2}
+\newcommand{\sesstitle}{Binomial Tree and the Risk-Neutral Measure}
+\usepackage{qf620style}
+\begin{document}
+\begin{center}
+{\LARGE\bfseries QF620 Stochastic Modelling in Finance --- Session 2\\[2pt] Reference Cheatsheet}\\[6pt]
+{\large Binomial Tree and the Risk-Neutral Measure: Radon--Nikodym derivative, arithmetic and geometric trees, American options, conditional expectation, martingales, risk-neutral pricing}\\[4pt]
+{\small Built from Session 2 slides (Tee Chyng Wen, SMU) $\cdot$ October 2026 $\cdot$ revised edition with intuition and full slide derivations}
+\end{center}
+\tableofcontents
+\vspace{4pt}
+\textbf{Source:} ``Session 2: Binomial Tree and the Risk-Neutral Measure'' (Tee Chyng Wen, SMU, 25 slides).
+
+\legend
+
+\textbf{What you must be able to do after this session:} compute and use a Radon--Nikodym derivative on a tree; state and justify $d<1+r<u$ and derive $p^*$; price European and American options by backward induction; derive the normal (arithmetic) and lognormal (geometric) limits of a tree via the CLT, including why the drift is $r-\frac12\sigma^2$; use the four conditional-expectation rules; prove that discounted prices are $\Q$-martingales and derive the risk-neutral pricing formula.
+
+\section*{Notation used throughout (slide conventions)}
+\addcontentsline{toc}{section}{Notation used throughout (slide conventions)}
+{\small\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Symbol & Meaning & Notes\\\midrule
+$\Omega,\ \omega$ & sample space; one outcome (a price path) & [S2]\\
+$\Prob$ & real-world (empirical) measure & e.g.\ fund manager's 80\% up [S4]\\
+$\Q$ & risk-neutral measure & also written with $*$: $p^*$, $\E^*$\\
+$\frac{\dd\Q}{\dd\Prob}(\omega)$ & Radon--Nikodym derivative & $=\Q(\omega)/\Prob(\omega)$ on a finite space [S2]\\
+$S_n$; $S^u_{n+1},S^d_{n+1}$ & stock at step $n$; up/down successors & \\
+$u,\ d$ & up and down factors & $u=S_1(H)/S_0$, $d=S_1(T)/S_0$ [S11]\\
+$r$ & risk-free rate per period (discrete) & \$1$\to$\$$(1+r)$ [S10]; \flag{} continuous in [S15--S17]\\
+$p^*,\ q^*$ & risk-neutral up/down probabilities & $p^*=\frac{(1+r)-d}{u-d}$, $q^*=1-p^*$ [S19]\\
+$\sigma$ & volatility per $\sqrt{\text{time}}$ & price units (arithmetic) or log units (geometric)\\
+$T$; $n$ or $N$ & maturity; number of steps & step size $T/n$\\
+$X_i$ & i.i.d.\ $\pm1$ with probability $\frac12$ each & drives the tree [S7, S15]\\
+$Z$ & standard normal & CLT limit [S8]\\
+$V_n,\ V^E_n,\ V^A_n$ & derivative value at step $n$; European; American & [S13, S23]\\
+$\E^*_n[\cdot]$ & conditional expectation under $\Q$ given the first $n$ tosses & [S19]\\
+$M_n$ & discounted price $S_n/(1+r)^n$ & a $\Q$-martingale [S21]\\\bottomrule
+\end{tabularx}}
+
+\textbf{Notation trap:} [S10--S13, S19--S23] use a discrete, per-period rate $(1+r)$; [S15--S17] use a continuously compounded rate ($e^{rT}$). The symbol $r$ means different things in the two halves.
+
+\section*{0. Topic map}
+\addcontentsline{toc}{section}{0. Topic map}
+\begin{lstlisting}
+PREREQUISITES (S1): MGF of normal ; E[e^X] = e^{μ+σ²/2} ; one-step hedge Δ ; risk-neutral p*
+    ▼
+SESSION 2
+├─ RADON–NIKODYM [S2–S6]
+│     ├─ (Ω, P) ; dP/dQ(ω) = P(ω)/Q(ω) ; needs equivalence P(ω)>0 ⇔ Q(ω)>0     [S2–S3]
+│     └─ fund manager (0.8) vs market maker (0.5): E^P[S₂]=112, E^Q[S₂]=100     [S4–S6]
+├─ TREE MODELS [S7–S17]
+│     ├─ arithmetic tree ±σ√(T/n) ⇒ S_T = S₀ + σ√T Z (CLT)                       [S7–S9]
+│     ├─ r ≠ 0: S_d < S₀(1+r) < S_u ; p* = (S₀(1+r) − S_d)/(S_u − S_d)           [S10]
+│     ├─ geometric tree u, d ; p* = (1+r−d)/(u−d) ; CRR d = 1/u ; put example   [S11–S12]
+│     ├─ American: V = max(continuation, exercise)                              [S13]
+│     └─ CLT for products ⇒ lognormal ; ln S_T = ln S₀ + (r−½σ²)T + σ√T Z       [S14–S17]
+├─ P AND Q [S18–S20]
+│     ├─ random variables need no measure ; distributions do                    [S18]
+│     └─ S_n = E*_n[S_{n+1}]/(1+r) ; 4 conditional expectation rules            [S19–S20]
+└─ MARTINGALES & ARBITRAGE [S21–S25]
+      ├─ M_n = S_n/(1+r)^n is a Q-martingale ; V_n = E*_n[V_N/(1+r)^{N−n}]       [S21–S23]
+      └─ complete markets ; no arbitrage ⇒ Q exists ; numeraires                [S24–S25]
+    ▼
+LATER: S3 Brownian motion = limit of the ±√(t/n) walk ; S7 Girsanov = continuous Radon–Nikodym
+\end{lstlisting}
+\textbf{The storyline of the session.}
+\begin{itemize}
+\item Session 1 priced one step with one $p^*$. Session 2 strings steps together into a \textbf{tree}, so $p^*$ at every node becomes a whole probability measure $\Q$ on \emph{paths}. The \textbf{Radon--Nikodym derivative} is the ``exchange rate'' that converts expectations under the real-world $\Prob$ into expectations under $\Q$.
+\item Letting the number of steps go to infinity, the \textbf{CLT} turns the tree into a normal (arithmetic tree) or lognormal (geometric tree) terminal distribution. The lognormal one, with drift $r-\frac12\sigma^2$, \emph{is} the Black--Scholes distribution.
+\item Finally the pricing rule ``discount the risk-neutral expectation one step back'' is rewritten in the language of \textbf{conditional expectation} and \textbf{martingales}: discounted prices are $\Q$-martingales. That sentence is the risk-neutral pricing formula, and it is the form that carries over to continuous time.
+\end{itemize}
+
+\section{Concept entries}
+
+\subsection{Probability spaces and the Radon--Nikodym derivative [S2--S3]}
+\begin{idea}
+A probability space has two separate ingredients: \textbf{what can happen} ($\Omega$, the list of paths) and \textbf{how likely each thing is} ($\Prob$). Changing measure keeps the list of paths and only changes the likelihoods. On a finite tree, the Radon--Nikodym derivative is literally the ratio of the two probabilities of each path, so it is a random variable (one number per path). It tells you by how much to up-weight or down-weight each path when switching from one measure to the other. The ratio only makes sense if both measures agree on which paths are possible; that agreement is called \textbf{equivalence}.
+\end{idea}
+\[\frac{\dd\Prob}{\dd\Q}(\omega)=\frac{\Prob(\omega)}{\Q(\omega)},\qquad \frac{\dd\Q}{\dd\Prob}(\omega)=\frac{\Q(\omega)}{\Prob(\omega)},\qquad \text{equivalence: }\ \Prob(\omega)>0\iff\Q(\omega)>0.\]
+\begin{where}
+\w{$\Omega$}{sample space: all possible outcomes (in a tree, all coin-toss paths, e.g.\ UU, UD, DU, DD).}
+\w{$\omega$}{one specific path, $\omega\in\Omega$.}
+\w{$\Prob(\omega),\Q(\omega)$}{probability of path $\omega$ under the real-world / risk-neutral measure (product of the per-step probabilities along the path).}
+\w{$\frac{\dd\Q}{\dd\Prob}(\omega)$}{the weight converting $\Prob$-probabilities into $\Q$-probabilities. The ``d'' is notation, not a calculus derivative, on a finite space.}
+\end{where}
+\textbf{Why equivalence [S3].} If some path has $\Prob(\omega)=0$ but $\Q(\omega)>0$, then $\Q/\Prob$ is undefined on it. Dropping that path loses information: it is $\Prob$-impossible but $\Q$-possible. Equivalence is the formal version of Session 1's ``only zero vs non-zero probabilities matter'': an arbitrage is defined by which outcomes are possible, so equivalent measures agree on what is an arbitrage.
+\begin{deriv}[{Properties of $\frac{\dd\Q}{\dd\Prob}$ \beyond}]
+\vspace{-6pt}
+\begin{align*}
+\E^\Prob\Big[\frac{\dd\Q}{\dd\Prob}\Big]&=\sum_\omega\frac{\Q(\omega)}{\Prob(\omega)}\Prob(\omega)=\sum_\omega\Q(\omega)=1 && \why{check your weights with this}\\
+\frac{\dd\Q}{\dd\Prob}&>0\ \text{on every path},\qquad \frac{\dd\Prob}{\dd\Q}=\Big(\frac{\dd\Q}{\dd\Prob}\Big)^{-1} && \why{equivalence; reciprocal}
+\end{align*}
+\end{deriv}
+\begin{exam}
+\flag{} [S3] says that if $\Prob(\omega_i)=0$ but $\Q(\omega_i)\ne0$ then $\Prob(\omega_i)/\Q(\omega_i)$ is undefined. That ratio is $0$ (defined); it is $\dd\Q/\dd\Prob=\Q/\Prob$ that breaks. The conclusion (you need equivalence for both directions) is right. \flag{} [S2] A probability space is properly a triple $(\Omega,\F,\Prob)$; $\F$ is dropped because $\Omega$ is finite.
+\end{exam}
+
+\subsection{Radon--Nikodym example: bullish fund manager vs market maker [S4--S6]}
+\begin{idea}
+Two people look at the same stock: the fund manager believes ``up'' with 80\% (real world $\Prob$), the market maker uses the risk-neutral 50\% ($\Q$). They disagree on the expected price (112 vs 100), but only the market maker's number is \textbf{enforceable}: he can lock it in today by borrowing 100 and buying the stock. The Radon--Nikodym derivative reconciles the two: it shrinks the weight on the high-price paths and boosts the low ones, pulling the manager's 112 down to the market maker's 100. This is the discrete preview of Girsanov's theorem (Session 7).
+\end{idea}
+\textbf{Setup [S4]:} $S_0=100$, $\pm\$10$ per period, $r=0$, two periods. $\Prob(\text{up})=0.8$; $\Q(\text{up})=0.5$.
+\begin{deriv}[{Building the $\frac{\dd\Q}{\dd\Prob}$ tree {[S4]}}]
+Per-step ratios: up $\frac{0.5}{0.8}=\frac58$, down $\frac{0.5}{0.2}=\frac52$. Multiply along the path (independent steps, so path probabilities are products):
+\[\text{UU: }\Big(\tfrac58\Big)^2=\tfrac{25}{64}\ (S=120),\qquad \text{UD, DU: }\tfrac58\cdot\tfrac52=\tfrac{25}{16}\ (S=100),\qquad \text{DD: }\Big(\tfrac52\Big)^2=\tfrac{25}{4}\ (S=80).\]
+\end{deriv}
+\begin{deriv}[{The two expectations {[S5]}}]
+\vspace{-6pt}
+\begin{align*}
+\E^\Prob[S_2]&=0.8^2(120)+2(0.8)(0.2)(100)+0.2^2(80)=76.8+32+3.2=112\\
+\E^\Q[S_2]&=0.5^2(120)+2(0.5)(0.5)(100)+0.5^2(80)=30+50+20=100=S_0
+\end{align*}
+The factor $2$ counts the two paths UD and DU that end at 100.
+\end{deriv}
+\textbf{Change-of-measure formulas [S5--S6]:}
+\[\E^\Q[X]=\E^\Prob\Big[X\,\frac{\dd\Q}{\dd\Prob}\Big],\qquad \E^\Prob[X]=\E^\Q\Big[X\,\frac{\dd\Prob}{\dd\Q}\Big].\]
+\begin{deriv}[{Why the formula holds (one line) and the slide's check {[S6]}}]
+\vspace{-6pt}
+\begin{align*}
+\E^\Prob\Big[X\frac{\dd\Q}{\dd\Prob}\Big]&=\sum_\omega X(\omega)\frac{\Q(\omega)}{\Prob(\omega)}\Prob(\omega)=\sum_\omega X(\omega)\Q(\omega)=\E^\Q[X] && \why{$\Prob$ cancels}\\
+\E^\Prob\Big[S_2\frac{\dd\Q}{\dd\Prob}\Big]&=0.64\cdot120\cdot\tfrac{25}{64}+0.32\cdot100\cdot\tfrac{25}{16}+0.04\cdot80\cdot\tfrac{25}{4}=30+50+20=100\ \checkmark\\
+\E^\Q\Big[S_2\frac{\dd\Prob}{\dd\Q}\Big]&=0.25\cdot120\cdot\tfrac{64}{25}+0.5\cdot100\cdot\tfrac{16}{25}+0.25\cdot80\cdot\tfrac{4}{25}=76.8+32+3.2=112\ \checkmark
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$X$}{any random variable on the paths (here $S_2$; in general any payoff).}
+\w{$X\frac{\dd\Q}{\dd\Prob}$}{$X$ reweighted path by path; averaging with $\Prob$ gives the $\Q$-average.}
+\end{where}
+\begin{exam}
+Interpretation [S6]: $\dd\Q/\dd\Prob<1$ on high prices, $>1$ on low prices. Sanity check \beyond: $\E^\Prob[\dd\Q/\dd\Prob]=0.25+0.5+0.25=1$. Traps: inverting the ratio ($\dd\Q/\dd\Prob=\Q/\Prob$, not $\Prob/\Q$); computing per-step ratios but forgetting to multiply along the path.
+\end{exam}
+
+\subsection{Arithmetic (normal) binomial tree and the CLT [S7--S9]}
+\begin{idea}
+We want a tree whose terminal price has a given mean $S_0$ and variance $\sigma^2T$, so that it can approximate a continuous model. Chop $[0,T]$ into $n$ steps. Independent steps add their variances, so each step must carry variance $\sigma^2T/n$, i.e.\ move $\pm\sigma\sqrt{T/n}$. Note the \textbf{square root}: step size shrinks like $\sqrt{\Delta t}$, not $\Delta t$. As $n\to\infty$ the sum of many small independent coin flips becomes normal by the CLT, so $S_T=S_0+\sigma\sqrt T Z$. This $\pm\sqrt{\Delta t}$ random walk is exactly what becomes Brownian motion in Session 3.
+\end{idea}
+\textbf{Goal [S7]} ($r=0$): $\E[S_T]=S_0$, $V[S_T]=\sigma^2T$.
+\begin{deriv}[{Construction of the step size {[S7]}}]
+\vspace{-6pt}
+\begin{align*}
+&\text{step } i:\ \pm a\text{ w.p. }\tfrac12\ \Rightarrow\ \text{mean }0,\ \text{variance }\tfrac12a^2+\tfrac12a^2=a^2\\
+&n\text{ independent steps: } V[S_T]=na^2\overset{!}{=}\sigma^2T\ \Rightarrow\ a=\sigma\sqrt{T/n} && \why{variances add}\\
+&S_T=S_0+\sum_{i=1}^n\sigma\sqrt{\tfrac Tn}\,X_i,\qquad X_i=\pm1\text{ w.p. }\tfrac12
+\end{align*}
+\end{deriv}
+\textbf{Central Limit Theorem [S8]:} for i.i.d.\ $X_i$ with mean $\mu$, variance $s^2$ and $Y_n=X_1+\cdots+X_n$,
+\[Z=\frac{Y_n-n\mu}{\sqrt{ns^2}}\ \xrightarrow{n\to\infty}\ \N(0,1).\]
+\begin{where}
+\w{$n\mu,\ \sqrt{ns^2}$}{mean and standard deviation of $Y_n$; subtracting and dividing standardises the sum.}
+\w{$\mu=0,\ s^2=1$}{for the coin variables $X_i=\pm1$.}
+\end{where}
+\begin{deriv}[{Taking the limit {[S8]}}]
+\vspace{-6pt}
+\begin{align*}
+S_T&=S_0+\sigma\sqrt T\cdot\frac{1}{\sqrt n}\sum_{i=1}^nX_i && \why{factor $\sqrt{T/n}=\sqrt T/\sqrt n$}\\
+\frac{1}{\sqrt n}\sum_{i=1}^nX_i&=\frac{Y_n-n\cdot0}{\sqrt{n\cdot1}}\ \xrightarrow{n\to\infty}\ Z\sim\N(0,1) && \why{CLT with $\mu=0$, $s^2=1$}\\
+\Rightarrow\ S_T&=S_0+\sigma\sqrt T Z,\qquad S_T\sim\N(S_0,\sigma^2T)\ \text{(Bachelier model)}
+\end{align*}
+\end{deriv}
+\begin{worked}[{Slide example {[S9]}: check the requirements}]
+$\E[S_T]=S_0+\sigma\sqrt T\,\E[Z]=S_0$. $V[S_T]=(\sigma\sqrt T)^2V[Z]=\sigma^2T$ \checkmark{} (constants come out of $\E$ unchanged and out of $V$ squared, Session 1).
+\end{worked}
+\begin{exam}
+Why $\sqrt{T/n}$ \beyond: steps of size $\propto\Delta t$ would give total variance $n\cdot(T/n)^2\to0$ (no randomness left); steps of fixed size would give variance $\to\infty$. Only $\sqrt{\Delta t}$ keeps it finite and non-zero. Weakness: $S_T$ can be negative.
+\end{exam}
+
+\subsection{Non-zero interest rates and the no-arbitrage condition [S10]}
+\begin{idea}
+Once money earns interest, the benchmark is no longer ``today's price'' but ``today's price grown at the risk-free rate''. The bank outcome $S_0(1+r)$ must lie strictly between the two stock outcomes: if the stock beat the bank in both states, borrow and buy; if the bank beat the stock in both states, short the stock and lend. The risk-neutral $p^*$ is then defined by ``the stock earns the bank rate on average''; it is a genuine probability in $(0,1)$ exactly when the no-arbitrage inequality holds.
+\end{idea}
+\[S^d_1<S_0(1+r)<S^u_1\qquad(\text{equivalently } d<1+r<u).\]
+\begin{deriv}[{Deriving $p^*$ {[S10]}}]
+\vspace{-6pt}
+\begin{align*}
+\E^*[S_1]=p^*S^u_1+(1-p^*)S^d_1&=S_0(1+r) && \why{grows at $r$ under $\Q$}\\
+p^*(S^u_1-S^d_1)&=S_0(1+r)-S^d_1\\
+p^*&=\frac{S_0(1+r)-S^d_1}{S^u_1-S^d_1}\in(0,1)\ \iff\ \text{no arbitrage}
+\end{align*}
+\end{deriv}
+\begin{deriv}[{Replication gives the same price \beyond{} (the S1 hedge, now with interest)}]
+Hold $\Delta$ shares and $B$ in the bank so the portfolio matches the derivative in both states:
+\vspace{-4pt}
+\begin{align*}
+\Delta S^u+B(1+r)&=V^u,\qquad \Delta S^d+B(1+r)=V^d && \why{2 equations, 2 unknowns}\\
+\Delta&=\frac{V^u-V^d}{S^u-S^d},\qquad B=\frac{uV^d-dV^u}{(u-d)(1+r)} && \why{subtract; then back-substitute}\\
+V_0&=\Delta S_0+B=\frac{p^*V^u+q^*V^d}{1+r} && \why{collect $V^u,V^d$; coefficients are $p^*,q^*$}
+\end{align*}
+\end{deriv}
+\begin{exam}
+Traps: forgetting to discount by $(1+r)$; using $\E^*[S_1]=S_0$ when $r\ne0$. If $S_0(1+r)\le S^d_1$: borrow $S_0$, buy the stock, end with at least what you owe. If $S_0(1+r)\ge S^u_1$: short the stock, lend the proceeds.
+\end{exam}
+
+\subsection{Geometric (lognormal) binomial tree [S11--S12]}
+\begin{idea}
+For equities we think in \emph{percentage} moves, so the tree multiplies: $S\to uS$ or $dS$. Then $p^*$ no longer depends on the price level, only on the gross returns $u,d,1+r$, so it is the same at every node and the tree recombines (an up then a down lands where a down then an up does). Pricing is \textbf{backward induction}: start from known payoffs at expiry, and at each node take the discounted $p^*$-weighted average of the two children.
+\end{idea}
+\[S^u_1=uS_0,\quad S^d_1=dS_0,\qquad p^*=\frac{S_0(1+r)-dS_0}{uS_0-dS_0}=\frac{(1+r)-d}{u-d},\qquad q^*=\frac{u-(1+r)}{u-d}.\]
+\begin{where}
+\w{$u,d$}{gross up/down returns, $0<d<u$; $u=S_1(H)/S_0$, $d=S_1(T)/S_0$ (H/T = heads/tails, not maturity).}
+\w{$(1+r)-d$}{how much the bank beats the down move; $u-(1+r)$: how much the up move beats the bank.}
+\end{where}
+$S_0$ cancels, so $p^*$ is the same at every node. Cox--Ross--Rubinstein [S11]: $d=1/u$ (symmetric in log space); \beyond{} usual calibration $u=e^{\sigma\sqrt{\Delta t}}$.
+\begin{worked}[{Slide example {[S12]}: European put, $S_0=4$, $u=2$, $d=\frac12$, $r=25\%$, $K=5$, $t=2$}]
+\begin{enumerate}
+\item $p^*=\frac{1.25-0.5}{2-0.5}=0.5$, $q^*=0.5$.
+\item Tree: $4\to\{8,2\}\to\{16,4,1\}$. Payoffs $(K-S_2)^+=0,\ 1,\ 4$.
+\item $t=1$: $V^u(S=8)=\frac{0.5\cdot0+0.5\cdot1}{1.25}=0.40$; $V^d(S=2)=\frac{0.5\cdot1+0.5\cdot4}{1.25}=2.00$.
+\item $t=0$: $V_0=\frac{0.5\cdot0.40+0.5\cdot2.00}{1.25}=0.96$.
+\end{enumerate}
+One-shot formula \beyond: $V_0=\frac{1}{(1+r)^N}\sum_{j=0}^N\binom Nj p^{*j}q^{*N-j}V_N(j)=\frac{0.25(0)+0.5(1)+0.25(4)}{1.5625}=0.96$ \checkmark. Call $K=5$: $0.25(11)/1.5625=1.76$. Put--call parity: $C-P=S_0-\frac{K}{(1+r)^N}$: $1.76-0.96=0.80=4-\frac{5}{1.5625}$ \checkmark.
+\end{worked}
+
+\subsection{American options [S13]}
+\begin{idea}
+An American option holder has a choice at every node: exercise now and take the intrinsic value, or hold and receive the continuation value (the European one-step rollback). A rational holder takes the larger. So the only change to the algorithm is a $\max$ at every node, applied \emph{while} rolling back (the values at later nodes are already American values). The extra value over the European is the price of that right to choose: the early-exercise premium.
+\end{idea}
+\[V^E_n=\frac{1}{1+r}\E^*_n[V_{n+1}]=\frac{p^*V^u_{n+1}+q^*V^d_{n+1}}{1+r},\qquad V^A_n=\max\Big(\frac{p^*V^u_{n+1}+q^*V^d_{n+1}}{1+r},\ (K-S_n)^+\Big)\ \text{(put)}.\]
+\begin{where}
+\w{first argument}{continuation value: worth of holding one more step (uses American values at the children).}
+\w{$(K-S_n)^+$}{exercise (intrinsic) value of a put; for a call $(S_n-K)^+$.}
+\end{where}
+\begin{worked}[{Slide example {[S13]}: American put on the {[S12]} tree}]
+$S=8$: $\max(0.40,\ 0)=0.40$. $S=2$: $\max(2.00,\ 3)=3.00$ (exercise early). $t=0$: $\max\big(\frac{0.5\cdot0.40+0.5\cdot3.00}{1.25},\ 1\big)=\max(1.36,1)=1.36$. Early-exercise premium $=1.36-0.96=0.40$.
+\end{worked}
+\begin{exam}
+Check exercise at \emph{every} node, not only at $t=0$; roll back the \emph{American} values. \beyond{} An American call on a non-dividend stock with $r>0$ is never exercised early (value $=$ European); American puts can be.
+\end{exam}
+
+\subsection{CLT for products: the lognormal tree [S14--S17]}
+\begin{idea}
+A geometric tree multiplies many independent gross returns. Taking logs turns a product into a sum, and the CLT applies to sums: so the \emph{log} of the price becomes normal, i.e.\ the price becomes lognormal. To make the limit risk-neutral we need $\E[S_T]=S_0e^{rT}$. Because $\E[e^{X}]=e^{\mu+\frac12\sigma^2}$ (Session 1), a log-price with drift $r$ would overshoot by $e^{\frac12\sigma^2T}$; so the log drift must be $r-\frac12\sigma^2$. That $-\frac12\sigma^2$ is the convexity correction you will see in Black--Scholes, $d_{1,2}$ and Itô's formula.
+\end{idea}
+\textbf{CLT for products [S14]:} $W=X_1X_2\cdots X_n$, $X_i\in(0,\infty)$ $\Rightarrow$ $\ln W=\ln X_1+\cdots+\ln X_n$, a sum of independent terms with finite mean and variance $\Rightarrow$ $\ln W$ approximately normal, $W$ approximately lognormal.
+
+\textbf{Targets [S15]} (risk-neutral, continuous $r$): $\E[\ln S_T]=\ln S_0+(r-\frac12\sigma^2)T$, $V[\ln S_T]=\sigma^2T$.
+\begin{deriv}[{The log tree and its limit {[S15--S16]}}]
+\vspace{-6pt}
+\begin{align*}
+\ln S_i&=\ln S_{i-1}+\Big(r-\tfrac12\sigma^2\Big)\frac Tn+\sigma\sqrt{\tfrac Tn}\,X_i && \why{drift per step $+$ shock per step}\\
+\ln S_T&=\ln S_0+\sum_{i=1}^n\Big(r-\tfrac12\sigma^2\Big)\frac Tn+\sum_{i=1}^n\sigma\sqrt{\tfrac Tn}X_i && \why{telescoping sum over $n$ steps}\\
+&=\ln S_0+\Big(r-\tfrac12\sigma^2\Big)T+\sigma\sqrt T\,\frac{1}{\sqrt n}\sum_{i=1}^nX_i && \why{$n$ equal drift terms add to $T$}\\
+&\xrightarrow{n\to\infty}\ln S_0+\Big(r-\tfrac12\sigma^2\Big)T+\sigma\sqrt TZ && \why{CLT, as in [S8]}\\
+S_T&=S_0\exp\Big[\Big(r-\tfrac12\sigma^2\Big)T+\sigma\sqrt TZ\Big],\qquad Z\sim\N(0,1) && \why{exponentiate}
+\end{align*}
+\end{deriv}
+\begin{worked}[{Slide example {[S16]}: mean and variance of $\ln S_T$}]
+$\ln S_T$ is an affine function $a+bZ$ with $a=\ln S_0+(r-\frac12\sigma^2)T$, $b=\sigma\sqrt T$. So $\E[\ln S_T]=a$ and $V[\ln S_T]=b^2=\sigma^2T$ \checkmark.
+\end{worked}
+\begin{deriv}[{Slide example {[S17]}: $\E[S_T]=S_0e^{rT}$ via the MGF}]
+\vspace{-6pt}
+\begin{align*}
+\E[S_T]&=S_0e^{(r-\frac12\sigma^2)T}\,\E\big[e^{\sigma\sqrt TZ}\big] && \why{pull out the non-random part}\\
+&=S_0e^{(r-\frac12\sigma^2)T}\,e^{\frac12(\sigma\sqrt T)^2} && \why{$M_Z(\theta)=e^{\theta^2/2}$ at $\theta=\sigma\sqrt T$}\\
+&=S_0e^{(r-\frac12\sigma^2)T+\frac12\sigma^2T}=S_0e^{rT} && \why{the $\pm\frac12\sigma^2T$ cancel}
+\end{align*}
+So the stock grows at the risk-free rate on average: the no-arbitrage requirement under $\Q$. Without the $-\frac12\sigma^2$ we would get $S_0e^{(r+\frac12\sigma^2)T}$, an arbitrage.
+\end{deriv}
+\begin{where}
+\w{$r$}{continuously compounded risk-free rate (\flag{} not the per-period simple rate of [S10--S13]).}
+\w{$\sigma$}{volatility of log returns (percentage volatility) per $\sqrt{\text{time}}$.}
+\w{$r-\frac12\sigma^2$}{drift of the log-price; $-\frac12\sigma^2$ is the convexity correction.}
+\end{where}
+\begin{exam}
+\flag{} [S15] The $\pm\sigma\sqrt{T/n}$ log tree with probability $\frac12$ is only risk-neutral in the limit \beyond: $\E[S_i/S_{i-1}]=e^{(r-\frac12\sigma^2)\Delta t}\cosh(\sigma\sqrt{\Delta t})=e^{r\Delta t}(1+O(\Delta t^2))$. Convergence to Black--Scholes \beyond{} (CRR, $S_0=K=100$, $r=5\%$, $\sigma=20\%$, $T=1$): $N=10$: 10.2534; $N=100$: 10.4306; $N=1000$: 10.4486; BS 10.4506.
+\end{exam}
+
+\subsection{Random variables vs measures: the coin example [S18]}
+\begin{idea}
+A random variable is just a \emph{function} on outcomes: ``number of heads in HHT'' is 2 whatever the coin's bias. The measure only enters when you ask for \emph{distributions} or \emph{expectations}. This is why changing from $\Prob$ to $\Q$ never changes a derivative's payoff, only how we average it.
+\end{idea}
+Toss 3 times; $X=$ heads, $Y=$ tails. $X(HHT)=2$, $Y(HHT)=1$; always $Y=3-X$. Fair coin: $X,Y\sim\mathrm{Bin}(3,\frac12)$ with probabilities $\frac18,\frac38,\frac38,\frac18$ (same distribution). Biased $p=\frac23$ \beyond: $\Prob(X=0,1,2,3)=\frac1{27},\frac6{27},\frac{12}{27},\frac8{27}$; $Y$ reversed; $\E[X]=2$, $\E[Y]=1$.
+\[\E[X]=\sum_{\omega\in\Omega}X(\omega)\Prob(\omega).\]
+\begin{where}
+\w{$X(\omega)$}{value on outcome $\omega$ (fixed, measure-free).}
+\w{$\Prob(\omega)$}{probability of that outcome (this is where the measure enters).}
+\end{where}
+
+\subsection{Conditional expectation [S19--S20]}
+\begin{idea}
+At a node of the tree you already know the first $n$ tosses; the future is still random. The \textbf{conditional expectation} $\E^*_n[\cdot]$ is the average over the remaining tosses \emph{given} where you are. It is a random variable as seen from time $0$ (its value depends on which node you reach). The one-step pricing rule ``today $=$ discounted average of the two children'' is exactly $S_n=\frac{1}{1+r}\E^*_n[S_{n+1}]$. The four rules on [S20] are all you need for every martingale proof in Sessions 2--4.
+\end{idea}
+\[\E^*_n[S_{n+1}]=p^*S^u_{n+1}+q^*S^d_{n+1},\qquad S_n=\frac{1}{1+r}\E^*_n[S_{n+1}].\]
+\begin{deriv}[{Why $S_n=\frac{1}{1+r}\E^*_n[S_{n+1}]$ {[S19]}}]
+\vspace{-6pt}
+\begin{align*}
+p^*S^u_{n+1}+q^*S^d_{n+1}&=S_n(p^*u+q^*d) && \why{$S^u=uS_n$, $S^d=dS_n$}\\
+p^*u+q^*d&=\frac{(1+r-d)u+(u-1-r)d}{u-d}=\frac{(1+r)(u-d)}{u-d}=1+r && \why{plug in $p^*,q^*$; $ud$ terms cancel}\\
+\Rightarrow\ \E^*_n[S_{n+1}]&=(1+r)S_n
+\end{align*}
+\end{deriv}
+\textbf{Properties [S20]:}\par
+{\small\begin{tabularx}{\linewidth}{@{}p{2.6cm} p{5.2cm} X@{}}\toprule
+Linearity & $\E_n[aX+bY]=a\E_n[X]+b\E_n[Y]$ & averaging is linear\\
+Taking out known & $\E_n[XY]=X\E_n[Y]$ & if $X$ depends only on the first $n$ tosses it acts like a constant\\
+Tower ($0\le n\le m\le N$) & $\E_n[\E_m[X]]=\E_n[X]$ & averaging a later forecast with less information gives today's forecast: the smaller information set wins\\
+Independence & $\E_n[X]=\E[X]$ & if $X$ depends only on toss $n+1$, past tosses say nothing about it\\\bottomrule
+\end{tabularx}}
+\begin{exam}
+Tower in the other order: $\E_m[\E_n[X]]=\E_n[X]$ too (for $n\le m$, $\E_n[X]$ is already known at $m$). Either way the result is the forecast with the \emph{earlier} time.
+\end{exam}
+
+\subsection{Martingales and the risk-neutral pricing formula [S21--S23]}
+\begin{idea}
+A \textbf{martingale} is a process whose best forecast of tomorrow is today: no predictable drift, a ``fair game''. The undiscounted stock is not one (it grows at $r$ under $\Q$), but measured in units of the bank account it is. That is the modern statement of risk-neutrality: \emph{discounted prices are $\Q$-martingales}. Since the same holds for any replicable derivative, today's derivative price is the discounted $\Q$-expectation of its payoff: the risk-neutral pricing formula. All of Sessions 6--8 are this formula in continuous time.
+\end{idea}
+\begin{deriv}[{Discounting turns the pricing rule into a martingale {[S21]}}]
+\vspace{-6pt}
+\begin{align*}
+S_n&=\frac{1}{1+r}\E^*_n[S_{n+1}] && \why{[S19]}\\
+\frac{S_n}{(1+r)^n}&=\E^*_n\Big[\frac{S_{n+1}}{(1+r)^{n+1}}\Big] && \why{divide by $(1+r)^n$, a constant}\\
+M_n&=\E^*_n[M_{n+1}],\quad n=0,\dots,N-1 && \why{define $M_n=S_n/(1+r)^n$}\\
+M_0&=\E^*_0[M_1]=\E^*_0[\E^*_1[M_2]]=\E^*[M_2]=\cdots=\E^*[M_N] && \why{tower rule repeatedly}
+\end{align*}
+\end{deriv}
+\begin{deriv}[{The slide's direct proof, naming each rule {[S22]} (needs $0<d<1+r<u$)}]
+\vspace{-6pt}
+\begin{align*}
+\E^*_n\Big[\frac{S_{n+1}}{(1+r)^{n+1}}\Big]&=\E^*_n\Big[\frac{S_n}{(1+r)^{n+1}}\cdot\frac{S_{n+1}}{S_n}\Big] && \why{multiply and divide by $S_n$}\\
+&=\frac{S_n}{(1+r)^n}\cdot\frac{1}{1+r}\E^*_n\Big[\frac{S_{n+1}}{S_n}\Big] && \why{take out what is known: $S_n$}\\
+&=\frac{S_n}{(1+r)^n}\cdot\frac{p^*u+q^*d}{1+r} && \why{independence: $S_{n+1}/S_n\in\{u,d\}$ depends only on toss $n+1$}\\
+&=\frac{S_n}{(1+r)^n} && \why{$p^*u+q^*d=1+r$}
+\end{align*}
+\end{deriv}
+\textbf{Risk-neutral pricing formula [S23]:} for a payoff $V_N$ at $t_N$, for $0\le n\le N$,
+\[\frac{V_n}{(1+r)^n}=\E^*_n\Big[\frac{V_{n+1}}{(1+r)^{n+1}}\Big],\qquad V_n=\E^*_n\Big[\frac{V_N}{(1+r)^{N-n}}\Big].\]
+\begin{deriv}[{From one-step rollback to the formula \beyond{} (fills the gap on [S23])}]
+Backward induction defines $V_n=\frac{1}{1+r}\E^*_n[V_{n+1}]$ (each node is the discounted average of its children; it equals the replicating portfolio cost, so it is the arbitrage-free price). Dividing by $(1+r)^n$ gives the martingale property. Then by the tower rule:
+\[\frac{V_n}{(1+r)^n}=\E^*_n\Big[\frac{V_{n+1}}{(1+r)^{n+1}}\Big]=\E^*_n\Big[\E^*_{n+1}\Big[\frac{V_{n+2}}{(1+r)^{n+2}}\Big]\Big]=\E^*_n\Big[\frac{V_{n+2}}{(1+r)^{n+2}}\Big]=\cdots=\E^*_n\Big[\frac{V_N}{(1+r)^N}\Big].\]
+Multiply by $(1+r)^n$ to get $V_n=\E^*_n[V_N/(1+r)^{N-n}]$.
+\end{deriv}
+\begin{where}
+\w{$(1+r)^n$}{value at $t_n$ of \$1 deposited at $t_0$: the bank account (numeraire).}
+\w{$M_n$}{stock measured in units of the bank account.}
+\w{$(1+r)^{N-n}$}{discount over the \emph{remaining} $N-n$ periods.}
+\end{where}
+\begin{exam}
+Check on the [S12] tree \beyond: $M_0=4$; $\E^*[M_1]=(0.5\cdot8+0.5\cdot2)/1.25=4$ \checkmark. Under $\Prob$ the discounted stock drifts up (risk premium) and is not a martingale. Traps: claiming $S_n$ (undiscounted) is a martingale when $r>0$; using $\Prob$ in the pricing formula; discounting by $(1+r)^N$ instead of $(1+r)^{N-n}$ at time $n$.
+\end{exam}
+
+\subsection{Complete markets and arbitrage [S24--S25]}
+\begin{idea}
+In a \textbf{complete} market every derivative can be built from simpler instruments (stock and cash), by dynamically rebalancing. Read the other way, the derivative can be hedged with the stock to produce cash. Existence of $\Q$ is tied to absence of arbitrage, uniqueness of $\Q$ to completeness. The bank account is only one choice of ``unit of account'' (numeraire); any positive traded asset works, each with its own martingale measure (used heavily in Session 7).
+\end{idea}
+\begin{itemize}
+\item \textbf{Complete market [S24]:} every derivative replicable from cash and the underlying, usually by dynamic rebalancing. \textbf{Incomplete} (e.g.\ trading frictions, or the trinomial model of S1): replication impossible.
+\item {}[S25]: absence of arbitrage implies the existence of risk-neutral probabilities; real world: riskier assets have higher expected returns; risk-neutral world: all assets grow at the risk-free rate; the denominator (numeraire) choice is arbitrary.
+\item \textbf{Fundamental theorems} \beyond: (1) no arbitrage $\iff$ at least one equivalent martingale measure $\Q$ exists; (2) complete $\iff$ that $\Q$ is unique. Binomial: unique $p^*\Rightarrow$ complete. Trinomial: a range of $p^*\Rightarrow$ incomplete.
+\end{itemize}
+\[\frac{V_n}{N_n}=\E^{\Q^N}_n\Big[\frac{V_{n+1}}{N_{n+1}}\Big]\quad\text{\beyond}\]
+\begin{where}
+\w{$N_n$}{price of the chosen numeraire (strictly positive); the bank account $(1+r)^n$ is the default.}
+\w{$\Q^N$}{the measure attached to numeraire $N$ (equals $\Q$ when $N_n=(1+r)^n$).}
+\end{where}
+\begin{exam}
+\flag{} [S25] ``In a complete market \ldots there is no arbitrage'': completeness does not imply no-arbitrage; they are separate conditions. \flag{} [S25] ``all relative price processes should be a martingale'': prices divided by the bank account are $\Q$-martingales; dividing by a different numeraire gives martingales under that numeraire's measure.
+\end{exam}
+
+\subsection{Implementation \beyond{} (tested)}
+\begin{lstlisting}[language=Python]
+import numpy as np
+def binomial_price(S0, K, u, d, r, N, payoff="put", american=False):
+    """N-step recombining tree; r = per-period simple rate (1+r per step)."""
+    p = ((1 + r) - d) / (u - d)
+    assert 0 < p < 1, "no-arbitrage requires d < 1+r < u"
+    j = np.arange(N + 1)
+    ex = (lambda s: np.maximum(K - s, 0)) if payoff == "put" else (lambda s: np.maximum(s - K, 0))
+    V = ex(S0 * u**j * d**(N - j))                      # terminal payoffs, j = # ups
+    for n in range(N - 1, -1, -1):
+        V = (p * V[1:] + (1 - p) * V[:-1]) / (1 + r)   # continuation value
+        if american:
+            V = np.maximum(V, ex(S0 * u**j[:n+1] * d**(n - j[:n+1])))
+    return V[0]
+print(binomial_price(4, 5, 2, 0.5, 0.25, 2))                  # 0.96
+print(binomial_price(4, 5, 2, 0.5, 0.25, 2, american=True))   # 1.36
+\end{lstlisting}
+
+\section{Comparison tables}
+\subsection{Real-world $\Prob$ vs risk-neutral $\Q$}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & $\Prob$ (empirical) & $\Q$ (risk-neutral)\\\midrule
+Up probability [S4] & 0.8 (a view) & 0.5 (from no-arbitrage)\\
+Expected stock growth & risk-free $+$ risk premium & risk-free rate\\
+$\E[S_2]$ in [S5] & 112 (not enforceable) & 100 (enforceable by borrow-and-buy)\\
+Discounted price & not a martingale & martingale [S21]\\
+Used for & forecasting, risk management & pricing [S23]\\
+Link & \multicolumn{2}{l}{$\E^\Q[X]=\E^\Prob[X\,\dd\Q/\dd\Prob]$; requires equivalence}\\\bottomrule
+\end{tabularx}}
+\subsection{Arithmetic vs geometric tree}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Arithmetic [S7--S9] & Geometric [S11, S14--S17]\\\midrule
+Step & $S\pm\sigma\sqrt{T/n}$ & $S\times u$ or $\times d$; log step $(r-\frac12\sigma^2)\frac Tn\pm\sigma\sqrt{T/n}$\\
+CLT applied to & sum of steps & sum of log steps\\
+Limit & $S_T=S_0+\sigma\sqrt TZ$ (normal) & $S_T=S_0e^{(r-\frac12\sigma^2)T+\sigma\sqrt TZ}$ (lognormal)\\
+Mean & $S_0$ ($r=0$) & $S_0e^{rT}$\\
+Negative prices & possible & impossible\\
+$\sigma$ measured in & price units & log (percentage) units\\
+Continuous-time analogue & $\dd S=\sigma\dd W$ & $\dd S=rS\dd t+\sigma S\dd W$ (GBM)\\\bottomrule
+\end{tabularx}}
+\subsection{European vs American on a tree}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & European & American\\\midrule
+Node value & $\frac{p^*V^u+q^*V^d}{1+r}$ & $\max$(continuation, exercise)\\
+Closed form & $\E^*[V_N]/(1+r)^N$ & none; backward induction only\\
+{[S12--S13]} put & 0.96 & 1.36 (exercise at $S=2$)\\
+Relation & \multicolumn{2}{l}{$V^A\ge V^E$; premium $=$ value of the early-exercise right}\\\bottomrule
+\end{tabularx}}
+
+\section{Master formula sheet}
+\textbf{Change of measure [S2--S6]}
+\begin{itemize}
+\item $\frac{\dd\Q}{\dd\Prob}(\omega)=\frac{\Q(\omega)}{\Prob(\omega)}$; equivalence $\Prob(\omega)>0\iff\Q(\omega)>0$.
+\item $\E^\Q[X]=\E^\Prob[X\frac{\dd\Q}{\dd\Prob}]$; $\E^\Prob[\frac{\dd\Q}{\dd\Prob}]=1$ \beyond.
+\end{itemize}
+\textbf{Trees [S7--S13]}
+\begin{itemize}
+\item Arithmetic: step $\pm\sigma\sqrt{T/n}$; $S_T\to S_0+\sigma\sqrt TZ$.
+\item No arbitrage $d<1+r<u$; $p^*=\frac{(1+r)-d}{u-d}$, $q^*=\frac{u-(1+r)}{u-d}$; CRR $d=1/u$ ($u=e^{\sigma\sqrt{\Delta t}}$ \beyond).
+\item European: $V_n=\frac{p^*V^u_{n+1}+q^*V^d_{n+1}}{1+r}$; $V_0=\frac{1}{(1+r)^N}\sum_j\binom Nj p^{*j}q^{*N-j}V_N(j)$ \beyond.
+\item American put: $V_n=\max\big(\frac{p^*V^u+q^*V^d}{1+r},(K-S_n)^+\big)$. Hedge \beyond: $\Delta_n=\frac{V^u-V^d}{S^u-S^d}$.
+\end{itemize}
+\textbf{Lognormal limit [S14--S17]:} $S_T=S_0\exp[(r-\frac12\sigma^2)T+\sigma\sqrt TZ]$; $\E[\ln S_T]=\ln S_0+(r-\frac12\sigma^2)T$; $V[\ln S_T]=\sigma^2T$; $\E[S_T]=S_0e^{rT}$.
+
+\textbf{Martingales and pricing [S19--S23]}
+\begin{itemize}
+\item $S_n=\frac{1}{1+r}\E^*_n[S_{n+1}]$; $p^*u+q^*d=1+r$.
+\item $M_n=\frac{S_n}{(1+r)^n}=\E^*_n[M_{n+1}]$; $M_0=\E^*[M_N]$.
+\item $V_n=\E^*_n\big[\frac{V_N}{(1+r)^{N-n}}\big]$.
+\end{itemize}
+
+\section{Glossary}
+\begin{itemize}
+\item \textbf{American option:} exercisable at any time up to expiry [S13]. \quad \textbf{Backward induction:} rolling values from expiry to today node by node.
+\item \textbf{Central limit theorem:} standardised sums of i.i.d.\ variables tend to $\N(0,1)$ [S8].
+\item \textbf{Complete market:} every payoff can be replicated [S24]. \quad \textbf{Conditional expectation $\E_n$:} expectation given the first $n$ tosses [S19].
+\item \textbf{Continuation value:} discounted risk-neutral expectation of next-step values [S13]. \quad \textbf{CRR:} geometric tree with $d=1/u$ [S11].
+\item \textbf{Early-exercise premium:} $V^A-V^E$. \quad \textbf{Equivalent measures:} agree on which events have zero probability [S3].
+\item \textbf{Martingale:} $M_n=\E_n[M_{n+1}]$; best forecast of tomorrow is today [S21].
+\item \textbf{Numeraire:} the asset prices are divided by (bank account by default) [S25].
+\item \textbf{Radon--Nikodym derivative:} ratio $\dd\Q/\dd\Prob$ reweighting outcomes [S2].
+\item \textbf{Risk-neutral measure $\Q$:} measure under which discounted prices are martingales [S21--S23].
+\item \textbf{Tower property:} $\E_n[\E_m[X]]=\E_n[X]$ for $n\le m$ [S20].
+\end{itemize}
+
+\section{Self-test}
+\subsection*{Questions}
+\addcontentsline{toc}{subsection}{Questions}
+\begin{enumerate}[label=Q\arabic*.]
+\item In the [S4] example, compute $\dd\Q/\dd\Prob$ on each path and verify $\E^\Prob[S_2\,\dd\Q/\dd\Prob]=100$ and $\E^\Prob[\dd\Q/\dd\Prob]=1$.
+\item What does it mean for $\Prob$ and $\Q$ to be equivalent, and why is it needed?
+\item In an arithmetic tree with $n$ steps and $r=0$, why is each step $\pm\sigma\sqrt{T/n}$? Show $S_T=S_0+\sigma\sqrt TZ$ has the required mean and variance.
+\item $S_0=50$, $u=1.2$, $d=0.9$, $r=5\%$ per period. Check no-arbitrage, find $p^*$, price a one-period call with $K=52$. Give the hedge.
+\item ([S12]) $S_0=4$, $u=2$, $d=\frac12$, $r=25\%$, $K=5$, two periods. Price the European put and call; check put--call parity.
+\item ([S13]) Price the American put on the same tree. Where is it optimal to exercise?
+\item ([S16--S17]) For $S_T=S_0\exp[(r-\frac12\sigma^2)T+\sigma\sqrt TZ]$, find $\E[\ln S_T]$, $V[\ln S_T]$, $\E[S_T]$. Why the $-\frac12\sigma^2$?
+\item ([S18]) Three tosses, $X=$ heads, $Y=$ tails. Give the distributions under $p=\frac12$ and $p=\frac23$.
+\item ([S22]) Prove that $S_n/(1+r)^n$ is a $\Q$-martingale, naming each rule you use.
+\item State the two fundamental theorems and classify the binomial and trinomial models. What is wrong with ``complete $\Rightarrow$ no arbitrage''?
+\end{enumerate}
+\subsection*{Solutions}
+\addcontentsline{toc}{subsection}{Solutions}
+\begin{enumerate}[label=S\arabic*.]
+\item UU $25/64$, UD and DU $25/16$, DD $25/4$. $0.64(120)(25/64)+0.32(100)(25/16)+0.04(80)(25/4)=30+50+20=100$. $0.64(25/64)+0.32(25/16)+0.04(25/4)=1$.
+\item $\Prob(\omega)>0\iff\Q(\omega)>0$. Otherwise the ratio is undefined somewhere and information about one measure is lost; an arbitrage under one measure would not be one under the other.
+\item Variance $\sigma^2T/n$ per step so $n$ steps sum to $\sigma^2T$; a $\pm a$ step has variance $a^2$, so $a=\sigma\sqrt{T/n}$. $\E[S_T]=S_0$, $V[S_T]=\sigma^2T$.
+\item $0.9<1.05<1.2$ \checkmark. $p^*=0.15/0.3=0.5$. Payoffs $60-52=8$, $0$. $C_0=0.5\cdot8/1.05=3.81$. $\Delta=8/15=0.533$; bond $=3.81-26.67=-22.86$ (borrow).
+\item Put: $0.40,\ 2.00\Rightarrow0.96$. Call: $0.25\cdot11/1.5625=1.76$. Parity $1.76-0.96=0.80=4-5/1.5625$ \checkmark.
+\item $S=2$: $\max(2.00,3)=3$ (exercise). $S=8$: $0.40$. Today $\max(1.36,1)=1.36$. Exercise at $t=1$ after a down move.
+\item $\E[\ln S_T]=\ln S_0+(r-\frac12\sigma^2)T$; $V=\sigma^2T$; $\E[S_T]=S_0e^{rT}$. The $-\frac12\sigma^2$ offsets the lognormal convexity.
+\item Fair: both $\mathrm{Bin}(3,\frac12)$: $\frac18,\frac38,\frac38,\frac18$. $p=\frac23$: $X$: $\frac1{27},\frac6{27},\frac{12}{27},\frac8{27}$; $Y$ reversed.
+\item Known factor $S_n$ out; independence gives $\E^*_n[S_{n+1}/S_n]=p^*u+q^*d=1+r$; result $S_n/(1+r)^n$.
+\item (1) No arbitrage $\iff$ an EMM exists. (2) Complete $\iff$ it is unique. Binomial: complete; trinomial: incomplete. A binomial tree with $u<1+r$ is complete (2 states, 2 assets) but has an arbitrage (short stock, lend), and no $p^*\in(0,1)$ exists.
+\end{enumerate}
+
+\section*{Appendix A. Slide coverage checklist}
+\addcontentsline{toc}{section}{Appendix A. Slide coverage checklist}
+{\small\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Slide & Content & Section\\\midrule
+S2--S3 & Probability space; Radon--Nikodym derivative; equivalence & 1.1\\
+S4--S6 & Fund manager vs market maker; $\dd\Q/\dd\Prob$ tree; change-of-measure check & 1.2\\
+S7--S9 & Arithmetic tree; CLT; example & 1.3\\
+S10 & Non-zero rates; $S^d<S_0(1+r)<S^u$; $p^*$ & 1.4\\
+S11--S12 & Geometric tree; CRR; European put example & 1.5\\
+S13 & American options; example & 1.6\\
+S14--S17 & CLT for products; log tree; $\E[S_T]=S_0e^{rT}$ & 1.7\\
+S18 & Coin example; random variables vs measure & 1.8\\
+S19--S20 & Conditional expectation; properties & 1.9\\
+S21--S23 & Martingales; proof; risk-neutral pricing formula & 1.10\\
+S24--S25 & Complete markets; arbitrage; numeraires & 1.11\\\bottomrule
+\end{tabularx}}
+
+\section*{Appendix B. Flag summary (\flag)}
+\addcontentsline{toc}{section}{Appendix B. Flag summary}
+\begin{enumerate}
+\item {}[S2] Probability space is $(\Omega,\F,\Prob)$; $\F$ omitted because $\Omega$ is finite.
+\item {}[S3] With $\Prob(\omega)=0<\Q(\omega)$ it is $\dd\Q/\dd\Prob$ that is undefined, not $\Prob/\Q$ (which is 0).
+\item {}[S10] vs [S15--S17]: $r$ is per-period simple in the tree slides but continuously compounded in the lognormal-limit slides.
+\item {}[S11] $S_1(T)$: $T$ means tails, not maturity.
+\item {}[S15] The $\pm\sigma\sqrt{T/n}$ log tree is risk-neutral only in the limit.
+\item {}[S25] ``Complete $\Rightarrow$ no arbitrage'' is not a theorem.
+\item {}[S25] Relative prices are $\Q$-martingales only with the bank account as denominator.
+\item {}[S9, S12, S13, S16, S17] Examples posed without worked answers; the solutions here are my own.
+\end{enumerate}
+\end{document}

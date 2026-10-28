@@ -1,0 +1,397 @@
+\documentclass[10pt]{article}
+\newcommand{\sessnum}{5}
+\newcommand{\sesstitle}{Stochastic Differential Equations}
+\usepackage{qf620style}
+\begin{document}
+\begin{center}
+{\LARGE\bfseries QF620 Stochastic Modelling in Finance --- Session 5\\[2pt] Reference Cheatsheet}\\[6pt]
+{\large Stochastic Differential Equations: SDEs and martingales via It\^o, the Bachelier (arithmetic) model and its call formula, the Black--Scholes (geometric) model and its call formula, the Vasicek mean-reverting model}\\[4pt]
+{\small Built from Session 5 slides (Tee Chyng Wen, SMU) $\cdot$ October 2026 $\cdot$ revised edition with intuition and full slide derivations}
+\end{center}
+\tableofcontents
+\vspace{4pt}
+\textbf{Source:} ``Session 5: Stochastic Differential Equations'' (Tee Chyng Wen, SMU, 16 slides).
+
+\legend
+
+\textbf{What you must be able to do after this session:} use It\^o's formula to decide whether a process is a martingale (zero drift); solve the arithmetic, geometric and Vasicek SDEs; derive the Bachelier and Black--Scholes call prices by splitting the integral at $x^*$ and completing the square; get the mean, variance and distribution of the Vasicek short rate via the It\^o isometry.
+
+\section*{Notation used throughout (slide conventions)}
+\addcontentsline{toc}{section}{Notation used throughout (slide conventions)}
+{\small\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Symbol & Meaning & Notes\\\midrule
+$W_t,\ \tilde W_t$ & (independent) Brownian motions & [S5]\\
+$S_t,S_0,S_T$ & stock price now / at 0 / at maturity & \\
+$K,\ T,\ r$ & strike; maturity; continuously compounded risk-free rate & discount $e^{-rT}$\\
+$\sigma$ & volatility: price units (Bachelier), percentage (Black--Scholes) & \flag{} same letter [S10]\\
+$V_c$ & European call price & [S7]\\
+$\Phi,\ \phi$ & standard normal CDF, PDF & $\phi(x)=\frac{1}{\sqrt{2\pi}}e^{-x^2/2}$\\
+$x^*$ & exercise threshold for the standard normal variable & [S7, S12]\\
+$d_1,d_2$ & Black--Scholes arguments & [S14]\\
+$r_t,\ \kappa,\ \theta$ & short rate; mean-reversion speed; long-run mean & Vasicek [S15]\\
+$\log$ & natural logarithm & slides write $\log$ for $\ln$\\\bottomrule
+\end{tabularx}}
+
+\textbf{Notation trap:} on [S15--S16] $r_t$ is a random short rate, while in the option formulas $r$ is a constant discount rate. $\sigma$ in Bachelier is in price units ($\approx\sigma_{BS}\times S_0$).
+
+\section*{0. Topic map}
+\addcontentsline{toc}{section}{0. Topic map}
+\begin{lstlisting}
+PREREQUISITES: S1 normal MGF, completing the square ; S3 BM, martingales ; S4 Itô's formula, isometry
+    ▼
+SESSION 5
+├─ HISTORY & MARTINGALE PROCESS [S2–S5]
+│     ├─ Bru & Yor on Doeblin ; Itô calculus took 25 years to be accepted        [S2–S4]
+│     └─ six processes: Itô SDE ; martingale iff zero drift                      [S5]
+├─ ARITHMETIC: BACHELIER (1900) [S6–S8]
+│     ├─ S_T = S₀ + σW_T ~ N(S₀, σ²T) ; negative prices possible                [S6]
+│     ├─ V_c = e^{−rT}E[(S_T − K)⁺] ; exercise when x > x* = (K − S₀)/(σ√T)       [S7]
+│     └─ V_c = e^{−rT}[(S₀−K)Φ(d) + σ√T φ(d)] ; ATM σ√(T/2π)                     [S8]
+├─ GEOMETRIC: BLACK–SCHOLES (1973) [S9–S14]
+│     ├─ S_T = S₀exp[(r − ½σ²)T + σW_T] ; paths vs Bachelier                     [S9–S10]
+│     ├─ dS = rS dt + σS dW solved via Itô on log S                              [S11]
+│     └─ x* ; completing the square ; V_c = S₀Φ(d₁) − Ke^{−rT}Φ(d₂)              [S12–S14]
+└─ MEAN REVERSION: VASICEK (1977) [S15–S16]
+      ├─ dr = κ(θ − r)dt + σdW ; Itô on e^{κt}r_t ; explicit solution            [S15]
+      └─ r_t ~ N(r₀e^{−κt} + θ(1 − e^{−κt}), σ²(1 − e^{−2κt})/(2κ))              [S16]
+    ▼
+LATER: S6 implied volatility, smile, displaced diffusion, stochastic volatility
+\end{lstlisting}
+\textbf{The storyline of the session.}
+\begin{itemize}
+\item \textbf{It\^o turns ``is it a martingale?'' into ``is the $\dd t$ coefficient zero?''}. Six examples drill this.
+\item \textbf{Solving an SDE} means finding a transformation that makes the right-hand side free of the unknown: none needed for arithmetic BM, $\log S$ for geometric BM, the integrating factor $e^{\kappa t}r_t$ for Vasicek. Then integrate.
+\item \textbf{Pricing} once $S_T$ is a function of one standard normal $x$: any European price is a one-dimensional integral $e^{-rT}\int\text{payoff}(x)\phi(x)\dd x$. For a call, cut the integral at the exercise boundary $x^*$ and evaluate the two pieces (by $\int x\phi=\phi$ for Bachelier, by completing the square for Black--Scholes).
+\end{itemize}
+
+\section{Concept entries}
+
+\subsection{History of stochastic calculus [S2--S4]}
+\begin{itemize}
+\item Bru and Yor (2002), on Wolfgang Doeblin: stochastic processes took a tortuous path through the 20th century; pioneers (Bachelier, L\'evy, It\^o) were original and took long to be accepted [S2].
+\item Brownian motion belongs to many classes at once: Gaussian, independent increments, Markov, martingale, semimartingale [S3].
+\item It\^o's calculus took 25 years (1944--1969) to be accepted; 1969 is McKean's \emph{Stochastic Integrals} [S4].
+\end{itemize}
+
+\subsection{SDEs and martingales [S5]}
+\begin{idea}
+Apply It\^o to write $\dd X_t=a_t\dd t+b_t\dd W_t$. The $\dd W$ part integrates to a stochastic integral with mean zero (Session 4), so it adds no expected change. The $\dd t$ part is a predictable drift. Hence $X$ is a martingale exactly when the drift $a_t$ is zero. This is much faster than the ``add and subtract $W_s$'' method of Session 3, and it is how you check a candidate process in every later session (e.g.\ ``is the discounted price a $\Q$-martingale?'').
+\end{idea}
+\textbf{Rule \beyond:} for $X_t=g(t,W_t)$, It\^o with $\mu=0$, $\sigma=1$ gives
+\[\dd g(t,W_t)=\Big(g_t+\tfrac12g_{xx}\Big)\dd t+g_x\dd W_t;\qquad \text{martingale}\iff g_t+\tfrac12g_{xx}=0.\]
+For two independent BMs add $\frac12g_{yy}\dd t$ and $g_y\dd\tilde W$ ($\dd W\dd\tilde W=0$).
+\begin{deriv}[{The six slide examples, working filled in (slide gives only yes/no)}]
+\vspace{-6pt}
+\begin{align*}
+(1)\ X=W_t^2:&\quad g_x=2W,\ g_{xx}=2\ \Rightarrow\ \dd X=\dd t+2W_t\dd W_t && \why{drift 1: no}\\
+(2)\ X=2+t+e^{W_t}:&\quad g_t=1,\ g_x=g_{xx}=e^W\ \Rightarrow\ \dd X=\big(1+\tfrac12e^{W_t}\big)\dd t+e^{W_t}\dd W_t && \why{no}\\
+(3)\ X=W_t^2+\tilde W_t^2:&\quad \dd X=(1+1)\dd t+2W_t\dd W_t+2\tilde W_t\dd\tilde W_t && \why{drift 2: no}\\
+(4)\ X=W_t^2-t:&\quad \dd X=\dd t+2W_t\dd W_t-\dd t=2W_t\dd W_t && \why{yes}\\
+(5)\ X=W_t^3:&\quad g_x=3W^2,\ g_{xx}=6W\ \Rightarrow\ \dd X=3W_t\dd t+3W_t^2\dd W_t && \why{drift $3W_t$: no}\\
+(6)\ X=e^{\theta W_t-\frac12\theta^2t}:&\quad g_t=-\tfrac12\theta^2X,\ g_x=\theta X,\ g_{xx}=\theta^2X && \\
+&\quad \dd X=\big(-\tfrac12\theta^2+\tfrac12\theta^2\big)X_t\dd t+\theta X_t\dd W_t=\theta X_t\dd W_t && \why{yes}
+\end{align*}
+In (6) the explicit $-\frac12\theta^2t$ produces a drift $-\frac12\theta^2X$ that exactly cancels the It\^o term $+\frac12\theta^2X$: the exponential martingale of Session 3.
+\end{deriv}
+\begin{exam}
+\flag{} \beyond{} Zero drift strictly gives a \emph{local} martingale; it is a true martingale when $\E\int_0^Tb_t^2\dd t<\infty$, true for all slide examples. Compare (5) with Session 3: drift $3W_t$ is why $\E_s[W_t^3]=W_s^3+3(t-s)W_s$.
+\end{exam}
+
+\subsection{Bachelier model: arithmetic Brownian motion [S6--S7]}
+\begin{idea}
+Bachelier (1900) modelled the price as a symmetric random walk: additive normal shocks of the same size whatever the price level. Solving is trivial (integrate both sides). Pricing: write $S_T$ as a function of one standard normal $x$, write the call price as an integral against $\phi(x)$, and note the payoff is zero below a threshold $x^*$: that is where the call starts to finish in the money.
+\end{idea}
+\[\dd S_t=\sigma\dd W_t\ \Longrightarrow\ S_T=S_0+\sigma W_T,\quad W_T\sim\N(0,T),\quad S_T\sim\N(S_0,\sigma^2T).\]
+\begin{where}
+\w{$\sigma$}{absolute (normal) volatility, in price units per $\sqrt{\text{year}}$.}
+\w{$\sigma^2T$}{variance grows linearly in time.}
+\end{where}
+\textbf{Shortcoming [S6]:} no lower bound at 0, so negative stock prices have positive probability; reasonable for interest rates (which can be negative).
+\begin{deriv}[{Setting up the call integral {[S7]}}]
+\vspace{-6pt}
+\begin{align*}
+V_c&=e^{-rT}\E\big[(S_T-K)^+\big]=e^{-rT}\E\big[(S_0+\sigma W_T-K)^+\big] && \why{risk-neutral price}\\
+&=\frac{e^{-rT}}{\sqrt{2\pi}}\int_{-\infty}^\infty\big(S_0+\sigma\sqrt Tx-K\big)^+e^{-\frac{x^2}{2}}\dd x && \why{$W_T=\sqrt Tx$, $x\sim\N(0,1)$}\\
+S_0+\sigma\sqrt Tx-K>0&\iff x>\frac{K-S_0}{\sigma\sqrt T}=x^* && \why{in-the-money region}
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$e^{-rT}$}{discount factor from $T$ back to today.}
+\w{$x^*$}{critical value of $x$ above which the call finishes in the money; $\sigma\sqrt T$ standardises the distance $K-S_0$.}
+\end{where}
+\begin{exam}
+\flag{} [S6--S7] The model has zero drift but discounts at $r$: only risk-neutral if $r=0$, or if $S$ is read as the forward price. Under $\Q$ with a spot stock the drift should be $rS_t$ \beyond.
+\end{exam}
+
+\subsection{Bachelier call formula [S8]}
+\begin{idea}
+Above $x^*$ the payoff is linear in $x$: a constant part $(S_0-K)$ and a part proportional to $x$. The constant part integrates against $\phi$ to a probability, $\Phi(-x^*)$. The linear part integrates exactly because $x\phi(x)$ has antiderivative $-\phi(x)$. So the price is ``intrinsic value $\times$ probability of exercise $+$ volatility $\times$ density''. At the money the first term vanishes and the price is just $\sigma\sqrt{T/2\pi}\approx0.4\sigma\sqrt T$.
+\end{idea}
+\begin{deriv}[{Evaluating the integral {[S8]} --- every line of the slide}]
+\vspace{-6pt}
+\begin{align*}
+V_c&=\frac{e^{-rT}}{\sqrt{2\pi}}\int_{x^*}^\infty\big(S_0+\sigma\sqrt Tx-K\big)e^{-\frac{x^2}{2}}\dd x && \why{drop $(\cdot)^+$ on $x>x^*$}\\
+&=\frac{e^{-rT}}{\sqrt{2\pi}}\int_{x^*}^\infty(S_0-K)e^{-\frac{x^2}{2}}\dd x+\frac{e^{-rT}}{\sqrt{2\pi}}\int_{x^*}^\infty\sigma\sqrt Tx\,e^{-\frac{x^2}{2}}\dd x && \why{split}\\
+&=e^{-rT}(S_0-K)\big[\Phi(\infty)-\Phi(x^*)\big]-\frac{e^{-rT}\sigma\sqrt T}{\sqrt{2\pi}}\Big[e^{-\frac{x^2}{2}}\Big]_{x^*}^\infty && \why{$\tfrac{\dd}{\dd x}e^{-x^2/2}=-xe^{-x^2/2}$}\\
+&=e^{-rT}\Big[(S_0-K)\Phi(-x^*)+\frac{\sigma\sqrt T}{\sqrt{2\pi}}e^{-\frac{(x^*)^2}{2}}\Big] && \why{$1-\Phi(x^*)=\Phi(-x^*)$}\\
+&=e^{-rT}\Big[(S_0-K)\Phi(-x^*)+\frac{\sigma\sqrt T}{\sqrt{2\pi}}e^{-\frac{(-x^*)^2}{2}}\Big] && \why{even function}\\
+&=e^{-rT}\Big[(S_0-K)\,\Phi\Big(\frac{S_0-K}{\sigma\sqrt T}\Big)+\sigma\sqrt T\,\phi\Big(\frac{S_0-K}{\sigma\sqrt T}\Big)\Big] && \why{$-x^*=\tfrac{S_0-K}{\sigma\sqrt T}$}
+\end{align*}
+ATM ($K=S_0$): $\Phi$-term vanishes, $\phi(0)=\frac{1}{\sqrt{2\pi}}$, so $V_c=e^{-rT}\sigma\sqrt{\frac{T}{2\pi}}$.
+\end{deriv}
+\begin{where}
+\w{$\frac{S_0-K}{\sigma\sqrt T}$}{moneyness in standard deviations ($=-x^*$).}
+\w{$(S_0-K)\Phi(\cdot)$}{intrinsic value weighted by the probability of exercise.}
+\w{$\sigma\sqrt T\phi(\cdot)$}{time value from the spread of outcomes; the whole price at the money.}
+\end{where}
+\beyond{} Put by parity: $V_p=V_c-e^{-rT}(S_0-K)=e^{-rT}[(K-S_0)\Phi(-d)+\sigma\sqrt T\phi(d)]$, $d=\frac{S_0-K}{\sigma\sqrt T}$.
+
+\subsection{Black--Scholes model: geometric Brownian motion [S9--S10]}
+\begin{idea}
+Black and Scholes (1973) made shocks \emph{proportional} to the price: percentage returns are normal, so the price is lognormal and always positive. The drift of the log is $r-\frac12\sigma^2$ so that the price itself grows at $r$ on average (convexity correction, Sessions 1--2). Compare the paths: when the price is high, Black--Scholes moves are big; when low, they shrink, so the price never crosses zero. Bachelier moves are the same size everywhere.
+\end{idea}
+\[S_T=S_0\exp\Big[\Big(r-\frac{\sigma^2}{2}\Big)T+\sigma W_T\Big],\qquad \log\frac{S_T}{S_0}\sim\N\Big(\Big(r-\frac{\sigma^2}2\Big)T,\ \sigma^2T\Big),\qquad \E[S_T]=S_0e^{rT}.\]
+\begin{deriv}[{Verifying $\E[S_T]=S_0e^{rT}$ {[S9]}}]
+$\E[S_T]=S_0e^{(r-\frac12\sigma^2)T}\E[e^{\sigma W_T}]=S_0e^{(r-\frac12\sigma^2)T}e^{\frac12\sigma^2T}=S_0e^{rT}$ (normal MGF with variance $T$). Alternative form: $\log S_T=\log S_0+(r-\frac{\sigma^2}{2})T+\sigma\sqrt T\,\N(0,1)$.
+\end{deriv}
+\textbf{Sample paths [S10]} (same Brownian path):
+\[\text{BS: }S_{t+\Delta t}=S_te^{(r-\frac{\sigma^2}{2})\Delta t+\sigma(W_{t+\Delta t}-W_t)},\qquad\text{Bachelier: }S_{t+\Delta t}=S_t+\sigma(W_{t+\Delta t}-W_t).\]
+\textbf{Slide question [S10]} (answered here): with matched volatility near $S_0$ the paths track closely. When $S$ rises, BS moves get bigger; when $S$ falls they shrink and $S$ stays positive, whereas Bachelier keeps the same absolute size and can go negative. BS outcomes are lognormal and right-skewed; Bachelier outcomes are symmetric.
+\begin{exam}
+\flag{} [S10] uses the same $\sigma$ in both recursions; to be comparable the Bachelier $\sigma$ must be in price units, roughly $\sigma_{BS}S_0$.
+\end{exam}
+
+\subsection{Solving the Black--Scholes SDE [S11]}
+\begin{idea}
+$\dd S=rS\dd t+\sigma S\dd W$ cannot be integrated directly because $S$ appears on both sides. Dividing by $S$ suggests the log: $\dd S/S$ looks like $\dd\log S$. By It\^o, $\dd\log S$ has \emph{constant} coefficients (plus the $-\frac12\sigma^2$ It\^o correction), so it is an arithmetic BM, which integrates trivially. Exponentiate to get $S_T$.
+\end{idea}
+\begin{deriv}[{It\^o on $X_t=\log S_t$ {[S11]}}]
+$f(S)=\log S$, $f'=\frac1S$, $f''=-\frac1{S^2}$; drift of $S$ is $\mu_t=rS_t$, volatility $\sigma_t=\sigma S_t$.
+\vspace{-4pt}
+\begin{align*}
+\dd X_t&=\Big(rS_t\cdot\frac1{S_t}+\frac12\sigma^2S_t^2\cdot\Big(-\frac1{S_t^2}\Big)\Big)\dd t+\sigma S_t\cdot\frac1{S_t}\dd W_t && \why{$\mu f'+\frac12\sigma^2f''$; $\sigma f'$}\\
+&=\Big(r-\frac{\sigma^2}{2}\Big)\dd t+\sigma\dd W_t && \why{constant coefficients}\\
+X_T-X_0&=\Big(r-\frac{\sigma^2}{2}\Big)T+\sigma W_T && \why{integrate $0\to T$; $W_0=0$}\\
+S_T&=S_0\exp\Big[\Big(r-\frac{\sigma^2}{2}\Big)T+\sigma W_T\Big] && \why{$X=\log S$, exponentiate}
+\end{align*}
+\end{deriv}
+
+\subsection{Black--Scholes call: setting up [S12]}
+\begin{deriv}[{The integral and the exercise region {[S12]}}]
+With $W_T=\sqrt Tx$, $x\sim\N(0,1)$:
+\vspace{-4pt}
+\begin{align*}
+V_c&=e^{-rT}\E[(S_T-K)^+]=\frac{e^{-rT}}{\sqrt{2\pi}}\int_{-\infty}^\infty\Big(S_0e^{(r-\frac{\sigma^2}{2})T+\sigma\sqrt Tx}-K\Big)^+e^{-\frac{x^2}{2}}\dd x\\
+S_T>K&\iff (r-\tfrac{\sigma^2}{2})T+\sigma\sqrt Tx>\log\tfrac{K}{S_0} && \why{take logs}\\
+&\iff x>\frac{\log\frac{K}{S_0}-(r-\frac{\sigma^2}{2})T}{\sigma\sqrt T}=x^* && \why{solve for $x$}\\
+V_c&=\frac{e^{-rT}}{\sqrt{2\pi}}\int_{x^*}^\infty\Big(S_0e^{(r-\frac{\sigma^2}{2})T+\sigma\sqrt Tx}-K\Big)e^{-\frac{x^2}{2}}\dd x && \why{drop $(\cdot)^+$}
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$\log(K/S_0)$}{log-distance from spot up to the strike.}
+\w{$(r-\frac12\sigma^2)T$}{expected log drift, which works in favour of exercise.}
+\w{$x^*$}{so $\Q(\text{exercise})=\Phi(-x^*)=\Phi(d_2)$.}
+\end{where}
+
+\subsection{Black--Scholes call: completing the square [S13--S14]}
+\begin{idea}
+The strike term is easy: $K e^{-rT}$ times the probability $x>x^*$. The stock term has $e^{\sigma\sqrt Tx}$ multiplying $e^{-x^2/2}$: an exponential of a quadratic. As in Session 1's MGF, complete the square: $-\frac{x^2}{2}+\sigma\sqrt Tx=-\frac{(x-\sigma\sqrt T)^2}{2}+\frac{\sigma^2T}{2}$. The constant $e^{\sigma^2T/2}$ cancels the $e^{-\sigma^2T/2}$ in front and $e^{rT}$ cancels $e^{-rT}$; what is left is a normal density shifted by $\sigma\sqrt T$, which integrates to a $\Phi$ with argument shifted by $\sigma\sqrt T$. That shift is exactly $d_1=d_2+\sigma\sqrt T$.
+\end{idea}
+\begin{deriv}[{Every line of {[S13]}}]
+\vspace{-6pt}
+\begin{align*}
+V_c&=\frac{e^{-rT}}{\sqrt{2\pi}}\int_{x^*}^\infty S_0e^{(r-\frac{\sigma^2}{2})T+\sigma\sqrt Tx-\frac{x^2}{2}}\dd x-\frac{e^{-rT}}{\sqrt{2\pi}}\int_{x^*}^\infty Ke^{-\frac{x^2}2}\dd x && \why{split}\\
+&=\frac{S_0e^{-\frac{\sigma^2T}{2}}}{\sqrt{2\pi}}\int_{x^*}^\infty e^{-\frac{x^2-2\sigma\sqrt Tx}{2}}\dd x-\frac{Ke^{-rT}}{\sqrt{2\pi}}\int_{x^*}^\infty e^{-\frac{x^2}2}\dd x && \why{$e^{-rT}e^{rT}=1$}\\
+&=\frac{S_0e^{-\frac{\sigma^2T}{2}}}{\sqrt{2\pi}}\int_{x^*}^\infty e^{-\frac{x^2-2\sigma\sqrt Tx+\sigma^2T-\sigma^2T}{2}}\dd x-\cdots && \why{add and subtract $\sigma^2T$}\\
+&=\frac{S_0e^{-\frac{\sigma^2T}{2}}}{\sqrt{2\pi}}\int_{x^*}^\infty e^{-\frac{(x-\sigma\sqrt T)^2}{2}}e^{\frac{\sigma^2T}{2}}\dd x-\cdots && \why{perfect square}\\
+&=\frac{S_0}{\sqrt{2\pi}}\int_{x^*}^\infty e^{-\frac{(x-\sigma\sqrt T)^2}{2}}\dd x-\frac{Ke^{-rT}}{\sqrt{2\pi}}\int_{x^*}^\infty e^{-\frac{x^2}2}\dd x && \why{constants cancel}
+\end{align*}
+\end{deriv}
+\begin{deriv}[{Evaluating and naming $d_1,d_2$ {[S14]}}]
+In the first integral substitute $y=x-\sigma\sqrt T$ (lower limit $x^*-\sigma\sqrt T$):
+\vspace{-4pt}
+\begin{align*}
+V_c&=S_0\big[\Phi(\infty)-\Phi(x^*-\sigma\sqrt T)\big]-Ke^{-rT}\big[\Phi(\infty)-\Phi(x^*)\big]\\
+&=S_0\Phi(-x^*+\sigma\sqrt T)-Ke^{-rT}\Phi(-x^*) && \why{$1-\Phi(a)=\Phi(-a)$}\\
+-x^*&=\frac{\log\frac{S_0}{K}+(r-\frac{\sigma^2}{2})T}{\sigma\sqrt T}=:d_2,\qquad -x^*+\sigma\sqrt T=\frac{\log\frac{S_0}{K}+(r+\frac{\sigma^2}{2})T}{\sigma\sqrt T}=:d_1 && \why{$\sigma\sqrt T=\tfrac{\sigma^2T}{\sigma\sqrt T}$}
+\end{align*}
+\[\boxed{V_c=S_0\Phi(d_1)-Ke^{-rT}\Phi(d_2),\qquad d_1=\frac{\log\frac{S_0}{K}+(r+\frac{\sigma^2}{2})T}{\sigma\sqrt T},\quad d_2=d_1-\sigma\sqrt T.}\]
+\end{deriv}
+\begin{where}
+\w{$\Phi(d_2)$}{$\Q(S_T>K)$: risk-neutral exercise probability.}
+\w{$\Phi(d_1)$}{exercise probability under the stock measure; also the call delta $\partial V_c/\partial S_0$ \beyond.}
+\w{$S_0\Phi(d_1)$}{present value of receiving the stock when exercised.}
+\w{$Ke^{-rT}\Phi(d_2)$}{present value of paying the strike when exercised.}
+\end{where}
+\beyond{} Put: $V_p=Ke^{-rT}\Phi(-d_2)-S_0\Phi(-d_1)$; parity $V_c-V_p=S_0-Ke^{-rT}$. Black (forward) form: $V_c=e^{-rT}[F\Phi(d_1)-K\Phi(d_2)]$, $F=S_0e^{rT}$, $d_1=\frac{\log(F/K)+\frac12\sigma^2T}{\sigma\sqrt T}$.
+\begin{exam}
+The derivation is a classic exam question. Checklist: (1) $S_T$ in terms of $x$; (2) find $x^*$; (3) split; (4) complete the square in the stock term; (5) substitute $y=x-\sigma\sqrt T$; (6) use $1-\Phi(a)=\Phi(-a)$; (7) identify $d_2=-x^*$, $d_1=d_2+\sigma\sqrt T$.
+\end{exam}
+
+\subsection{Vasicek mean-reverting model [S15]}
+\begin{idea}
+Interest rates do not wander off forever: they are pulled back to a long-run level $\theta$. The drift $\kappa(\theta-r_t)$ is positive below $\theta$ and negative above, harder the further away. To solve, we need to remove $r_t$ from the drift. Multiplying by the integrating factor $e^{\kappa t}$ does it (as for the ODE $y'=-\kappa y$): $\dd(e^{\kappa t}r_t)$ has no $r_t$ on the right, so it integrates directly. The solution shows exponentially fading memory of $r_0$, a pull towards $\theta$, and shocks damped by their age.
+\end{idea}
+\[\dd r_t=\kappa(\theta-r_t)\dd t+\sigma\dd W_t.\]
+\begin{where}
+\w{$\theta$}{long-run mean level.}
+\w{$\kappa>0$}{speed of mean reversion.}
+\w{$\theta-r_t$}{positive below the mean (drift up), negative above (drift down).}
+\w{$\sigma$}{absolute volatility of the rate (normal model).}
+\end{where}
+\begin{deriv}[{Solving with the integrating factor {[S15]}}]
+It\^o on $X_t=f(t,r_t)=e^{\kappa t}r_t$: $f_t=\kappa e^{\kappa t}r$, $f_r=e^{\kappa t}$, $f_{rr}=0$ (no It\^o term).
+\vspace{-4pt}
+\begin{align*}
+\dd(e^{\kappa t}r_t)&=\kappa e^{\kappa t}r_t\dd t+e^{\kappa t}\dd r_t && \why{It\^o with time}\\
+&=\kappa e^{\kappa t}r_t\dd t+e^{\kappa t}\big[\kappa\theta-\kappa r_t\big]\dd t+\sigma e^{\kappa t}\dd W_t && \why{substitute $\dd r_t$}\\
+&=\kappa\theta e^{\kappa t}\dd t+\sigma e^{\kappa t}\dd W_t && \why{$\pm\kappa e^{\kappa t}r_t$ cancel}\\
+e^{\kappa t}r_t-r_0&=\int_0^t\kappa\theta e^{\kappa u}\dd u+\sigma\int_0^te^{\kappa u}\dd W_u=\theta(e^{\kappa t}-1)+\sigma\int_0^te^{\kappa u}\dd W_u && \why{integrate $0\to t$}\\
+r_t&=r_0e^{-\kappa t}+\theta\big(1-e^{-\kappa t}\big)+\sigma\int_0^te^{\kappa(u-t)}\dd W_u && \why{multiply by $e^{-\kappa t}$}
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$r_0e^{-\kappa t}$}{memory of the starting rate, decaying exponentially.}
+\w{$\theta(1-e^{-\kappa t})$}{pull toward the long-run mean.}
+\w{$\sigma\int e^{\kappa(u-t)}\dd W_u$}{accumulated shocks; a shock at time $u$ is damped by $e^{-\kappa(t-u)}$.}
+\end{where}
+
+\subsection{Vasicek distribution [S16]}
+\begin{deriv}[{Mean, variance, distribution {[S16]}}]
+\vspace{-6pt}
+\begin{align*}
+\E[r_t]&=r_0e^{-\kappa t}+\theta(1-e^{-\kappa t}) && \why{stochastic integral has mean 0}\\
+V[r_t]&=\E\Big[\Big(\sigma\int_0^te^{\kappa(u-t)}\dd W_u\Big)^2\Big] && \why{only the random part}\\
+&=\sigma^2\int_0^te^{2\kappa(u-t)}\dd u && \why{It\^o isometry; deterministic integrand}\\
+&=\sigma^2e^{-2\kappa t}\Big[\frac{e^{2\kappa u}}{2\kappa}\Big]_0^t=\frac{\sigma^2}{2\kappa}\big(1-e^{-2\kappa t}\big) && \why{integrate}\\
+r_t&\sim\N\Big(r_0e^{-\kappa t}+\theta(1-e^{-\kappa t}),\ \frac{\sigma^2}{2\kappa}(1-e^{-2\kappa t})\Big) && \why{deterministic integrand $\Rightarrow$ normal}
+\end{align*}
+\end{deriv}
+\begin{where}
+\w{$\E[r_t]$}{weighted average of $r_0$ and $\theta$; the weight on $\theta$ grows from 0 to 1.}
+\w{$t\to\infty$}{stationary distribution $\N(\theta,\frac{\sigma^2}{2\kappa})$ \beyond.}
+\w{$\kappa\to0$}{variance $\to\sigma^2t$: back to arithmetic BM \beyond.}
+\end{where}
+\beyond{} Weakness: normal, so negative rates possible (CIR $\dd r=\kappa(\theta-r)\dd t+\sigma\sqrt r\dd W$ fixes this). Half-life of a deviation: $\ln2/\kappa$.
+
+\subsection{Implementation \beyond{} (tested)}
+\begin{lstlisting}[language=Python]
+import numpy as np
+from scipy.stats import norm
+def bachelier_call(S0, K, sigma, T, r=0.0):
+    d = (S0 - K) / (sigma*np.sqrt(T))
+    return np.exp(-r*T) * ((S0 - K)*norm.cdf(d) + sigma*np.sqrt(T)*norm.pdf(d))
+def bs_call(S0, K, sigma, T, r):
+    d1 = (np.log(S0/K) + (r + 0.5*sigma**2)*T) / (sigma*np.sqrt(T))
+    d2 = d1 - sigma*np.sqrt(T)
+    return S0*norm.cdf(d1) - K*np.exp(-r*T)*norm.cdf(d2)
+rng = np.random.default_rng(2); Z = rng.standard_normal(2_000_000)
+S0, K, T, r = 100, 105, 1.0, 0.05
+ST = S0 + 20*np.sqrt(T)*Z                                   # Bachelier, sigma_N = 20, r = 0
+print(round(bachelier_call(S0, K, 20, T), 4), round(np.maximum(ST-K, 0).mean(), 4))  # 5.7269 5.7292
+print(round(bachelier_call(100, 100, 20, 1), 4), round(20*np.sqrt(1/(2*np.pi)), 4))  # ATM 7.9788 7.9788
+ST = S0*np.exp((r - 0.02)*T + 0.2*np.sqrt(T)*Z)             # Black-Scholes, sigma = 20%
+print(round(bs_call(S0, K, 0.2, T, r), 4), round(np.exp(-r*T)*np.maximum(ST-K, 0).mean(), 4))  # 8.0214 8.0257
+kappa, theta, sig, r0, t = 1.5, 0.04, 0.01, 0.02, 2.0       # Vasicek
+mean = r0*np.exp(-kappa*t) + theta*(1 - np.exp(-kappa*t))  # 0.039
+var = sig**2/(2*kappa)*(1 - np.exp(-2*kappa*t))             # 3.33e-5
+\end{lstlisting}
+
+\section{Comparison tables}
+\subsection{The three SDEs}
+{\small\begin{tabularx}{\linewidth}{@{}l X X X@{}}\toprule
+ & Bachelier [S6--S8] & Black--Scholes [S9--S14] & Vasicek [S15--S16]\\\midrule
+SDE & $\dd S=\sigma\dd W$ & $\dd S=rS\dd t+\sigma S\dd W$ & $\dd r=\kappa(\theta-r)\dd t+\sigma\dd W$\\
+Transform & none & $\log S$ & $e^{\kappa t}r_t$\\
+Solution & $S_0+\sigma W_T$ & $S_0e^{(r-\frac12\sigma^2)T+\sigma W_T}$ & $r_0e^{-\kappa t}+\theta(1-e^{-\kappa t})+\sigma\int e^{\kappa(u-t)}\dd W$\\
+Distribution & normal & lognormal & normal\\
+Mean & $S_0$ & $S_0e^{rT}$ & $r_0e^{-\kappa t}+\theta(1-e^{-\kappa t})$\\
+Variance & $\sigma^2T$ & $S_0^2e^{2rT}(e^{\sigma^2T}-1)$ \beyond & $\frac{\sigma^2}{2\kappa}(1-e^{-2\kappa t})$\\
+Negative values & possible & impossible & possible\\
+Used for & rates, spreads & equities, FX & short rates\\\bottomrule
+\end{tabularx}}
+\subsection{Bachelier vs Black--Scholes call}
+{\small\begin{tabularx}{\linewidth}{@{}l X X@{}}\toprule
+ & Bachelier & Black--Scholes\\\midrule
+$x^*$ & $\frac{K-S_0}{\sigma\sqrt T}$ & $\frac{\log(K/S_0)-(r-\frac12\sigma^2)T}{\sigma\sqrt T}$\\
+Price & $e^{-rT}[(S_0-K)\Phi(d)+\sigma\sqrt T\phi(d)]$ & $S_0\Phi(d_1)-Ke^{-rT}\Phi(d_2)$\\
+Key step & $\int xe^{-x^2/2}=-e^{-x^2/2}$ & completing the square\\
+ATM & $e^{-rT}\sigma\sqrt{T/2\pi}$ & $\approx0.4S_0\sigma\sqrt T$ when $r=0$ \beyond\\
+$\sigma$ units & price & percentage\\\bottomrule
+\end{tabularx}}
+
+\section{Master formula sheet}
+\begin{itemize}
+\item \textbf{It\^o and martingales [S5]:} $\dd g(t,W)=(g_t+\frac12g_{xx})\dd t+g_x\dd W$; martingale $\iff$ drift $=0$.
+\item \textbf{Bachelier [S6--S8]:} $S_T=S_0+\sigma W_T\sim\N(S_0,\sigma^2T)$; $x^*=\frac{K-S_0}{\sigma\sqrt T}$; $V_c=e^{-rT}[(S_0-K)\Phi(d)+\sigma\sqrt T\phi(d)]$, $d=\frac{S_0-K}{\sigma\sqrt T}$; ATM $e^{-rT}\sigma\sqrt{T/2\pi}$.
+\item \textbf{Black--Scholes [S9--S14]:} $\dd\log S=(r-\frac12\sigma^2)\dd t+\sigma\dd W$; $S_T=S_0e^{(r-\frac12\sigma^2)T+\sigma W_T}$; $V_c=S_0\Phi(d_1)-Ke^{-rT}\Phi(d_2)$, $d_{1,2}=\frac{\log(S_0/K)+(r\pm\frac12\sigma^2)T}{\sigma\sqrt T}$, $d_2=-x^*$.
+\item \textbf{Vasicek [S15--S16]:} $r_t=r_0e^{-\kappa t}+\theta(1-e^{-\kappa t})+\sigma\int_0^te^{\kappa(u-t)}\dd W_u\sim\N\big(r_0e^{-\kappa t}+\theta(1-e^{-\kappa t}),\frac{\sigma^2}{2\kappa}(1-e^{-2\kappa t})\big)$.
+\end{itemize}
+
+\section{Glossary}
+\begin{itemize}
+\item \textbf{Arithmetic Brownian motion:} $\dd S=\mu\dd t+\sigma\dd W$; normal outcomes [S7]. \quad \textbf{Bachelier model:} arithmetic BM for prices (1900) [S6].
+\item \textbf{Black--Scholes model:} geometric BM for prices (1973) [S9]. \quad \textbf{Geometric BM:} $\dd S=\mu S\dd t+\sigma S\dd W$; lognormal [S11].
+\item \textbf{Completing the square:} $x^2-2ax=(x-a)^2-a^2$ to integrate exponentials of quadratics [S13].
+\item \textbf{Exercise boundary $x^*$:} level of the standard normal above which the option pays [S7, S12].
+\item \textbf{Integrating factor:} multiplier ($e^{\kappa t}$) that removes the state from the drift [S15].
+\item \textbf{Mean reversion / Ornstein--Uhlenbeck / Vasicek:} $\dd X=\kappa(\theta-X)\dd t+\sigma\dd W$; Vasicek (1977) for the short rate [S15].
+\end{itemize}
+
+\section{Self-test}
+\subsection*{Questions}
+\addcontentsline{toc}{subsection}{Questions}
+\begin{enumerate}[label=Q\arabic*.]
+\item ([S5]) Derive the SDEs of the six processes and say which are martingales.
+\item ([S6]) Under Bachelier, find $\Prob(S_T<0)$ for $S_0=100$, $\sigma=30$, $T=4$.
+\item ([S7--S8]) Derive the Bachelier call formula and its ATM value. Price $S_0=K=100$, $\sigma=20$, $T=1$, $r=0$.
+\item ([S8]) Give the Bachelier put formula.
+\item ([S11]) Solve $\dd S=rS\dd t+\sigma S\dd W$.
+\item ([S12--S14]) Derive $V_c=S_0\Phi(d_1)-Ke^{-rT}\Phi(d_2)$. What is $\Phi(d_2)$?
+\item $S_0=100$, $K=105$, $T=1$, $r=5\%$, $\sigma=20\%$: price the call and the put.
+\item ([S10]) Compare Bachelier and Black--Scholes paths.
+\item ([S15]) Solve the Vasicek SDE.
+\item ([S16]) $\kappa=1.5$, $\theta=4\%$, $\sigma=1\%$, $r_0=2\%$, $t=2$: mean, standard deviation and $\Prob(r_t<0)$.
+\end{enumerate}
+\subsection*{Solutions}
+\addcontentsline{toc}{subsection}{Solutions}
+\begin{enumerate}[label=S\arabic*.]
+\item See 1.2: martingales are (4) $W^2-t$ and (6) $e^{\theta W-\frac12\theta^2t}$.
+\item $S_T\sim\N(100,3600)$: $\Phi(-100/60)=\Phi(-1.667)\approx4.8\%$.
+\item See 1.3--1.4. ATM: $20\sqrt{1/2\pi}=7.979$.
+\item $V_p=e^{-rT}[(K-S_0)\Phi(-d)+\sigma\sqrt T\phi(d)]$, $d=\frac{S_0-K}{\sigma\sqrt T}$.
+\item It\^o on $\log S$: $\dd\log S=(r-\frac12\sigma^2)\dd t+\sigma\dd W$; $S_T=S_0e^{(r-\frac12\sigma^2)T+\sigma W_T}$.
+\item See 1.7--1.8. $\Phi(d_2)=\Q(S_T>K)$.
+\item $d_1=\frac{\log(100/105)+0.07}{0.2}=0.1061$, $d_2=-0.0939$; $V_c=100(0.5422)-105e^{-0.05}(0.4626)=8.02$. Put $8.02-100+105e^{-0.05}=7.90$.
+\item BS moves scale with the price and stay positive; Bachelier moves are level-independent and can go negative.
+\item $r_t=r_0e^{-\kappa t}+\theta(1-e^{-\kappa t})+\sigma\int_0^te^{\kappa(u-t)}\dd W_u$.
+\item Mean $0.02e^{-3}+0.04(1-e^{-3})=0.0390$; variance $\frac{10^{-4}}{3}(1-e^{-6})=3.325\times10^{-5}$, sd $0.577\%$; $\Prob(r_t<0)=\Phi(-6.76)\approx0$.
+\end{enumerate}
+
+\section*{Appendix A. Slide coverage checklist}
+\addcontentsline{toc}{section}{Appendix A. Slide coverage checklist}
+{\small\begin{tabularx}{\linewidth}{@{}l X l@{}}\toprule
+Slide & Content & Section\\\midrule
+S2--S4 & Bru \& Yor; process classes; It\^o calculus acceptance & 1.1\\
+S5 & SDEs and martingales: six examples & 1.2\\
+S6--S7 & Bachelier model; call integral; $x^*$ & 1.3\\
+S8 & Bachelier call formula; ATM & 1.4\\
+S9--S10 & Black--Scholes model; sample paths & 1.5\\
+S11 & Solving GBM via It\^o on $\log S$ & 1.6\\
+S12 & BS call integral; $x^*$ & 1.7\\
+S13--S14 & Completing the square; $d_1,d_2$ & 1.8\\
+S15 & Vasicek SDE and solution & 1.9\\
+S16 & Vasicek mean, variance, distribution & 1.10\\\bottomrule
+\end{tabularx}}
+
+\section*{Appendix B. Flag summary (\flag)}
+\addcontentsline{toc}{section}{Appendix B. Flag summary}
+\begin{enumerate}
+\item {}[S5] Zero drift gives a local martingale; true martingale needs integrability (satisfied by all six examples).
+\item {}[S6--S8] Bachelier with zero drift and $e^{-rT}$ discounting is only risk-neutral if $r=0$ or $S$ is a forward price.
+\item {}[S10] Same $\sigma$ used for both models; Bachelier $\sigma$ is in price units ($\approx\sigma_{BS}S_0$).
+\item {}[S6] ``Reasonable model for interest rates'': yes for allowing negative values, but mean reversion is usually added.
+\item {}[S5, S10] Example working and the comparison answer are not on the slides; the working here is my own.
+\end{enumerate}
+\end{document}
